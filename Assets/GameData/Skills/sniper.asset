@@ -10,22 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
-  m_Name: wind-step
+  m_Name: sniper
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
-  Id: wind-step
-  EnglishName: Wind Step
-  KoreanName: "\uBC14\uB78C \uAC78\uC74C"
-  EnglishDescription: 
-  KoreanDescription: 
+  Id: sniper
+  EnglishName: Sniper
+  KoreanName: "\uC800\uACA9"
+  EnglishDescription: Stun the leader for 1 second. Does not activate while leading.
+  KoreanDescription: "\uC120\uB450 \uB9D0\uC744 1\uCD08 \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4.
+    \uC790\uC2E0\uC774 \uC120\uB450\uC77C \uB54C\uB294 \uC0AC\uC6A9\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
   ManaCost: 100
   Cooldown: 1.2
   EffectDuration: 1.1
   RetainedMana: 0
-  EffectType: 0
-  SpeedBoost: 4.2
+  EffectType: 4
+  SpeedBoost: 0
   AccelerationBoost: 0
   FatigueRecovery: 0
   LateChargeThreshold: 0.62
   LateChargeSpeedBoost: 0
-  EffectColor: {r: 0.2, g: 0.9, b: 0.88, a: 1}
+  ChargeDistanceMeters: 0
+  StunDuration: 1
+  TimeStopDuration: 0
+  EffectColor: {r: 0.92, g: 0.2, b: 0.28, a: 1}
   Icon: {fileID: 0}

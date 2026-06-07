@@ -39,6 +39,18 @@ namespace Malatro
                 "prophet", "Prophet", "예언가",
                 "Multiply reward gold by successful ticket count squared.", "보상 골드에 적중한 마권 개수의 제곱만큼 배율을 적용합니다.",
                 RelicRarity.Legendary, RelicEffectType.ProphetReward, 120, new Color(1f, 0.68f, 0.16f)));
+            database.Relics.Add(CreateRelic(
+                "bronze-medal", "Bronze Medal", "동메달",
+                "Place ticket base gold is increased by 30.", "연승식 기본 골드가 30 증가합니다.",
+                RelicRarity.Common, RelicEffectType.PlaceBaseGoldBonus, 30, new Color(0.72f, 0.42f, 0.2f)));
+            database.Relics.Add(CreateRelic(
+                "gold-medal", "Gold Medal", "금메달",
+                "Win ticket base gold is increased by 30.", "단승식 기본 골드가 30 증가합니다.",
+                RelicRarity.Common, RelicEffectType.WinBaseGoldBonus, 30, new Color(1f, 0.78f, 0.18f)));
+            database.Relics.Add(CreateRelic(
+                "silver-medal", "Silver Medal", "은메달",
+                "Exacta and Quinella ticket base gold is increased by 30.", "쌍승식과 복승식 기본 골드가 30 증가합니다.",
+                RelicRarity.Common, RelicEffectType.CombinationBaseGoldBonus, 30, new Color(0.75f, 0.82f, 0.88f)));
             return database;
         }
 

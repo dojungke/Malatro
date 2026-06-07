@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1a79bba14c12db409f8e869c695c874, type: 3}
+  m_Name: royal-turf-crown
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.RaceData
+  Id: royal-turf-crown
+  EnglishName: Royal Turf Crown
+  KoreanName: "\uB85C\uC5F4 \uD130\uD504 \uD06C\uB77C\uC6B4"
+  TotalDistanceMeters: 2000
+  Surface: 1
+  League: 2

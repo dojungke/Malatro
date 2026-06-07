@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59edad74d369ee6438aa6c8965971822, type: 3}
+  m_Name: RaceDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.RaceDatabase
+  Races:
+  - {fileID: 11400000, guid: 5c9128e34a6c05145a765c83a119a5d9, type: 2}
+  - {fileID: 11400000, guid: cad18e7d8d8926c4f8129e23774712d5, type: 2}
+  - {fileID: 11400000, guid: a72a297006dd28445a9f0437df4d73d0, type: 2}
+  - {fileID: 11400000, guid: 5b3fe9a5010a392449fe4dbc2be03dc4, type: 2}
+  - {fileID: 11400000, guid: b93dec435218730438f84cb102edae99, type: 2}
+  - {fileID: 11400000, guid: c00d847741addd34d8610d7f8c569fe8, type: 2}
+  - {fileID: 11400000, guid: 56ed77a94547845468cad8b9c5e1338d, type: 2}
+  - {fileID: 11400000, guid: 96861a35f1359f64096fd4628fb5c442, type: 2}
+  - {fileID: 11400000, guid: 0db308b3893c1d84991f67b8be129089, type: 2}
+  - {fileID: 11400000, guid: 7c0281626152941439870552a0773a2d, type: 2}
+  - {fileID: 11400000, guid: dc7754714543f984f8eab50be04c4d2b, type: 2}
+  - {fileID: 11400000, guid: d21db2421a6535645832a156f090a45e, type: 2}

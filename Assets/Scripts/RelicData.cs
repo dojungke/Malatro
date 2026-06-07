@@ -16,7 +16,10 @@ namespace Malatro
         WinPayoutBonus,
         ExactaPayoutBonus,
         HighestOddsSpeed,
-        ProphetReward
+        ProphetReward,
+        PlaceBaseGoldBonus,
+        WinBaseGoldBonus,
+        CombinationBaseGoldBonus
     }
 
     [CreateAssetMenu(fileName = "RelicData", menuName = "Malatro/Relic Data")]

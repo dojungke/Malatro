@@ -6,6 +6,7 @@ using UnityEngine;
 namespace Malatro.Editor
 {
     [InitializeOnLoad]
+    // 프로젝트를 열 때 기본 말/스킬 에셋이 없으면 생성하고 기존 데이터를 현재 형식으로 보정한다.
     public static class HorseDatabaseGenerator
     {
         private const string DataFolder = "Assets/GameData/Horses";
@@ -92,6 +93,7 @@ namespace Malatro.Editor
 
         private static void MigrateExistingHorseSkills(HorseDatabase database)
         {
+            // 예전 정수형 스킬 값의 순서를 유지해 대응하는 HorseSkillData 에셋으로 옮긴다.
             var skillIds = new[]
             {
                 "lightning-start",
@@ -136,6 +138,7 @@ namespace Malatro.Editor
                 return;
             }
 
+            // 중첩 경로의 부모 폴더부터 재귀적으로 만든다.
             var parent = Path.GetDirectoryName(path)?.Replace('\\', '/');
             var name = Path.GetFileName(path);
             if (!string.IsNullOrEmpty(parent) && !AssetDatabase.IsValidFolder(parent))

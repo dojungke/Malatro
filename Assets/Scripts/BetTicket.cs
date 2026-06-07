@@ -14,6 +14,7 @@ namespace Malatro
     }
 
     [Serializable]
+    // 베팅 종류와 대상 말을 보관하고 배당 및 적중 여부를 계산한다.
     public sealed class BetTicket
     {
         public const int BasePayout = 10;
@@ -71,6 +72,7 @@ namespace Malatro
 
             switch (type)
             {
+                // 복합 베팅일수록 맞히기 어려운 만큼 두 말의 배당을 함께 반영한다.
                 case BetType.Win:
                     odds = first.WinOdds;
                     break;
@@ -84,6 +86,11 @@ namespace Malatro
                     odds = second == null ? 1f : Mathf.Max(1.6f, first.WinOdds * second.WinOdds * 0.38f);
                     break;
             }
+        }
+
+        public int GetExpectedPayout(int baseGoldBonus)
+        {
+            return Mathf.RoundToInt((BasePayout + Mathf.Max(0, baseGoldBonus)) * odds);
         }
 
         public string GetTypeName(bool korean)
@@ -146,6 +153,7 @@ namespace Malatro
 
         private void NormalizeTargets()
         {
+            // 단일 대상 베팅은 두 번째 말을 버리고, 복합 베팅은 같은 말을 중복 선택하지 못하게 한다.
             if (!NeedsSecondHorse)
             {
                 second = null;

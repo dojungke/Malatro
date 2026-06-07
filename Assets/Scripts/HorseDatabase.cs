@@ -85,24 +85,49 @@ namespace Malatro
             switch (id)
             {
                 case "lightning-start":
-                    SetSkill(skill, "Lightning Start", "번개 출발", 1.5f, 7f, 0f, 0f, new Color(1f, 0.86f, 0.18f));
+                    SetSkill(skill, "Black Goat Slash", "흑염소참", 0f, 0f, 0f, 0f, new Color(0.38f, 0.12f, 0.48f));
+                    skill.EnglishDescription = "Stun all opponents within 50 meters ahead and behind for 1 second.";
+                    skill.KoreanDescription = "전후방 50미터 이내의 모든 상대를 1초 동안 기절시킵니다.";
+                    skill.EffectType = HorseSkillEffectType.AreaStun;
+                    skill.AreaRadiusMeters = 50f;
+                    skill.StunDuration = 1f;
                     break;
                 case "wind-step":
-                    SetSkill(skill, "Wind Step", "바람 걸음", 4.2f, 0f, 0f, 0f, new Color(0.2f, 0.9f, 0.88f));
+                    SetSkill(skill, "Knight's Strike", "기사의 일격", 0f, 0f, 0f, 0f, new Color(0.95f, 0.82f, 0.25f));
+                    skill.EnglishDescription = "Charge 50 meters and stun horses in the path for 0.5 seconds.";
+                    skill.KoreanDescription = "50미터 돌진하며 경로상의 말을 0.5초 동안 기절시킵니다.";
+                    skill.EffectType = HorseSkillEffectType.KnightStrike;
+                    skill.ChargeDistanceMeters = 50f;
+                    skill.StunDuration = 0.5f;
                     break;
                 case "second-wind":
-                    SetSkill(skill, "Second Wind", "두 번째 숨", 1.2f, 0f, 7f, 0f, new Color(0.3f, 1f, 0.5f));
+                    SetSkill(skill, "Sniper", "저격", 0f, 0f, 0f, 0f, new Color(0.92f, 0.2f, 0.28f));
+                    skill.EnglishDescription = "Stun the leader for 1 second. Does not activate while leading.";
+                    skill.KoreanDescription = "선두 말을 1초 동안 기절시킵니다. 자신이 선두일 때는 사용하지 않습니다.";
+                    skill.EffectType = HorseSkillEffectType.Sniper;
+                    skill.StunDuration = 1f;
                     break;
                 case "mana-surge":
-                    SetSkill(skill, "Mana Surge", "마나 폭주", 0f, 2.5f, 0f, 35f, new Color(0.72f, 0.36f, 1f));
+                    SetSkill(skill, "Transfer", "환승", 0f, 0f, 0f, 0f, new Color(0.18f, 0.82f, 1f));
+                    skill.EnglishDescription = "Swap positions with the nearest horse ahead. Does not activate while leading.";
+                    skill.KoreanDescription = "자신 앞의 가장 가까운 말과 위치를 바꿉니다. 앞에 말이 없으면 사용하지 않습니다.";
+                    skill.EffectType = HorseSkillEffectType.Transfer;
                     break;
                 case "iron-rhythm":
-                    SetSkill(skill, "Iron Rhythm", "강철 리듬", 0f, 3.5f, 4f, 0f, new Color(1f, 0.52f, 0.2f));
+                    SetSkill(skill, "My World", "내 세계", 0f, 0f, 0f, 0f, new Color(0.48f, 0.34f, 1f));
+                    skill.EnglishDescription = "Stop time for everything except yourself for 5 seconds.";
+                    skill.KoreanDescription = "자신을 제외한 모든 것의 시간을 5초 동안 멈춥니다.";
+                    skill.EffectType = HorseSkillEffectType.TimeStop;
+                    skill.EffectDuration = 5f;
+                    skill.TimeStopDuration = 5f;
                     break;
                 default:
-                    SetSkill(skill, "Late Charge", "막판 추입", 2f, 0f, 0f, 0f, new Color(1f, 0.24f, 0.3f));
-                    skill.EffectType = HorseSkillEffectType.LateCharge;
-                    skill.LateChargeSpeedBoost = 4.5f;
+                    SetSkill(skill, "Star Ladder", "별사다리", 4f, 4f, 0f, 0f, new Color(1f, 0.35f, 0.72f));
+                    skill.EnglishDescription = "Gain 4 Speed and Acceleration for 3 seconds. The effect increases by 25% for each horse ahead.";
+                    skill.KoreanDescription = "3초 동안 속도와 가속도가 4 증가하며, 앞에 있는 말 한 마리당 효과가 25% 증가합니다.";
+                    skill.EffectType = HorseSkillEffectType.StarStair;
+                    skill.EffectDuration = 3f;
+                    skill.BonusPerHorseAhead = 0.25f;
                     break;
             }
             return skill;

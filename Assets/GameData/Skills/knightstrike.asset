@@ -10,22 +10,25 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
-  m_Name: mana-surge
+  m_Name: knightstrike
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
-  Id: mana-surge
-  EnglishName: Mana Surge
-  KoreanName: "\uB9C8\uB098 \uD3ED\uC8FC"
-  EnglishDescription: 
-  KoreanDescription: 
+  Id: knightstrike
+  EnglishName: knight'strike
+  KoreanName: "\uAE30\uC0AC\uC758 \uC77C\uACA9"
+  EnglishDescription: Charge 50 meters and stun horses in the path for 0.5 seconds.
+  KoreanDescription: "50\uBBF8\uD130 \uB3CC\uC9C4\uD558\uBA70 \uACBD\uB85C\uC0C1\uC758
+    \uB9D0\uC744 0.5\uCD08 \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4."
   ManaCost: 100
   Cooldown: 1.2
   EffectDuration: 1.1
-  RetainedMana: 35
-  EffectType: 0
+  RetainedMana: 0
+  EffectType: 2
   SpeedBoost: 0
-  AccelerationBoost: 2.5
+  AccelerationBoost: 0
   FatigueRecovery: 0
   LateChargeThreshold: 0.62
   LateChargeSpeedBoost: 0
-  EffectColor: {r: 0.72, g: 0.36, b: 1, a: 1}
+  ChargeDistanceMeters: 50
+  StunDuration: 0.5
+  EffectColor: {r: 0.95, g: 0.82, b: 0.25, a: 1}
   Icon: {fileID: 0}

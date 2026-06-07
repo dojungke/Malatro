@@ -6,6 +6,7 @@ using UnityEngine;
 namespace Malatro.Editor
 {
     [InitializeOnLoad]
+    // 기본 유물 에셋과 Resources 데이터베이스가 항상 존재하도록 에디터에서 자동 복구한다.
     public static class RelicDatabaseGenerator
     {
         private const string DataFolder = "Assets/GameData/Relics";

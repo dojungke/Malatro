@@ -6,18 +6,21 @@ using UnityEngine.InputSystem;
 
 namespace Malatro
 {
+    // 프로토타입의 게임 상태, 경주 시뮬레이션, 즉시 모드 UI를 한곳에서 관리한다.
     public sealed class MalatroPrototype : MonoBehaviour
     {
-        private const float TrackLength = 100f;
         private const int FieldSize = 6;
         private const int BaseTicketCount = 3;
+        private const int RelicShopOfferCount = 3;
+        private const int StartingRelicShopRefreshCost = 30;
         private const int RacesPerRound = 3;
         private const int StartingRoundTarget = 50;
-        private const float MaxMana = 100f;
+        private const float DefaultManaCost = 100f;
         private const float CameraViewDistance = 34f;
 
         private readonly List<Horse> field = new();
         private readonly List<BetTicket> offeredTickets = new();
+        private readonly List<RelicData> relicShopOffers = new();
         private readonly System.Random rng = new();
 
         private GUIStyle titleStyle;
@@ -32,6 +35,8 @@ namespace Malatro
         private Camera mainCamera;
         private HorseDatabase horseDatabase;
         private RelicDatabase relicDatabase;
+        private RaceDatabase raceDatabase;
+        private RaceData currentRace;
         private readonly RelicInventory relicInventory = new RelicInventory();
 
         private GamePhase phase = GamePhase.Betting;
@@ -40,6 +45,7 @@ namespace Malatro
         private int roundNumber = 1;
         private int roundTargetGold = StartingRoundTarget;
         private int roundEarnedGold;
+        private int relicShopRefreshCost = StartingRelicShopRefreshCost;
         private int gold = 100;
         private int hits;
         private int totalTicketsResolved;
@@ -55,6 +61,7 @@ namespace Malatro
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            // 씬에 별도 오브젝트를 배치하지 않아도 플레이 모드에서 프로토타입을 시작한다.
             if (FindAnyObjectByType<MalatroPrototype>() != null)
             {
                 return;
@@ -83,6 +90,7 @@ namespace Malatro
             whiteTexture = Texture2D.whiteTexture;
             horseDatabase = HorseDatabase.LoadOrCreateRuntimeDefaults();
             relicDatabase = RelicDatabase.LoadOrCreateRuntimeDefaults();
+            raceDatabase = RaceDatabase.LoadOrCreateRuntimeDefaults();
             StartNewRun();
         }
 
@@ -163,12 +171,14 @@ namespace Malatro
 
             field.Clear();
             offeredTickets.Clear();
+            relicShopOffers.Clear();
             relicInventory.Clear();
             latestStandings.Clear();
             raceNumber = 1;
             roundNumber = 1;
             roundTargetGold = StartingRoundTarget;
             roundEarnedGold = 0;
+            relicShopRefreshCost = StartingRelicShopRefreshCost;
             gold = 100;
             hits = 0;
             totalTicketsResolved = 0;
@@ -209,6 +219,7 @@ namespace Malatro
             }
 
             NormalizeOpeningOdds();
+            GenerateRaceData();
             GenerateTickets();
             SetLog("pick_ticket");
         }
@@ -268,12 +279,130 @@ namespace Malatro
         {
             offeredTickets.Clear();
             EnsureTicketCount();
+            relicShopRefreshCost = StartingRelicShopRefreshCost;
+            RollRelicShop();
+        }
+
+        private void GenerateRaceData()
+        {
+            var raceInRound = GetRaceInRound();
+            var league = raceInRound switch
+            {
+                1 => RaceLeague.G3,
+                2 => RaceLeague.G2,
+                _ => RaceLeague.G1
+            };
+
+            var candidates = raceDatabase != null && raceDatabase.Races != null
+                ? raceDatabase.Races
+                    .Where(race => race != null && race.League == league)
+                    .ToList()
+                : new List<RaceData>();
+
+            if (candidates.Count == 0)
+            {
+                raceDatabase = RaceDatabase.CreateRuntimeDefaults();
+                candidates = raceDatabase.Races
+                    .Where(race => race != null && race.League == league)
+                    .ToList();
+            }
+
+            currentRace = candidates.Count > 0
+                ? candidates[rng.Next(candidates.Count)]
+                : null;
+        }
+
+        private float GetTrackLength()
+        {
+            return currentRace != null ? currentRace.SimulationLength : 100f;
+        }
+
+        private void RollRelicShop()
+        {
+            relicShopOffers.Clear();
+            if (relicDatabase == null || relicDatabase.Relics == null)
+            {
+                return;
+            }
+
+            var available = relicDatabase.Relics
+                .Where(relic => relic != null && !relicInventory.Contains(relic))
+                .Distinct()
+                .ToList();
+
+            while (relicShopOffers.Count < RelicShopOfferCount && available.Count > 0)
+            {
+                var rarity = RollAvailableRelicRarity(available);
+                var candidates = available
+                    .Where(relic => relic.Rarity == rarity)
+                    .ToList();
+                var selected = candidates[rng.Next(candidates.Count)];
+                relicShopOffers.Add(selected);
+                available.Remove(selected);
+            }
+        }
+
+        private RelicRarity RollAvailableRelicRarity(IReadOnlyCollection<RelicData> available)
+        {
+            var rarities = new[]
+            {
+                RelicRarity.Common,
+                RelicRarity.Rare,
+                RelicRarity.Epic,
+                RelicRarity.Legendary
+            };
+            var availableRarities = rarities
+                .Where(rarity => available.Any(relic => relic.Rarity == rarity))
+                .ToList();
+            var totalWeight = availableRarities.Sum(GetRelicRarityWeight);
+            var roll = rng.NextDouble() * totalWeight;
+
+            foreach (var rarity in availableRarities)
+            {
+                roll -= GetRelicRarityWeight(rarity);
+                if (roll <= 0d)
+                {
+                    return rarity;
+                }
+            }
+
+            return availableRarities[availableRarities.Count - 1];
+        }
+
+        private static int GetRelicRarityWeight(RelicRarity rarity)
+        {
+            return rarity switch
+            {
+                RelicRarity.Common => 60,
+                RelicRarity.Rare => 25,
+                RelicRarity.Epic => 10,
+                RelicRarity.Legendary => 5,
+                _ => 0
+            };
+        }
+
+        private void RefreshRelicShop()
+        {
+            if (gold < relicShopRefreshCost)
+            {
+                SetLog("relic_refresh_need_gold", relicShopRefreshCost);
+                return;
+            }
+
+            var paidCost = relicShopRefreshCost;
+            gold -= paidCost;
+            relicShopRefreshCost = relicShopRefreshCost > int.MaxValue / 2
+                ? int.MaxValue
+                : relicShopRefreshCost * 2;
+            RollRelicShop();
+            SetLog("relic_refreshed", paidCost, relicShopRefreshCost);
         }
 
         private void EnsureTicketCount()
         {
             var targetCount = BaseTicketCount + (relicInventory.Contains(RelicEffectType.ExtraTicket) ? 1 : 0);
 
+            // 같은 종류와 대상 조합의 티켓이 반복되지 않도록 제한 횟수만큼 다시 뽑는다.
             var attempts = 0;
             while (offeredTickets.Count < targetCount && attempts < 80)
             {
@@ -331,7 +460,7 @@ namespace Malatro
 
             foreach (var horse in field)
             {
-                horse.ResetForRace(UnityEngine.Random.Range(0f, 38f));
+                horse.ResetForRace(UnityEngine.Random.Range(0f, GetManaCost(horse) * 0.38f));
             }
             ApplyPreRaceRelics();
 
@@ -340,41 +469,64 @@ namespace Malatro
 
         private void TickRace(float deltaTime)
         {
-            raceClock += deltaTime;
+            var worldTimeStopped = field.Any(horse => horse.TimeStopTimer > 0f);
+            if (!worldTimeStopped)
+            {
+                raceClock += deltaTime;
+            }
 
             foreach (var horse in field)
             {
-                horse.TickSkillEffect(deltaTime);
+                horse.TickTimeStop(deltaTime);
                 if (horse.Finished)
                 {
                     continue;
                 }
 
-                horse.SkillCooldown = Mathf.Max(0f, horse.SkillCooldown - deltaTime);
-                horse.Mana += horse.Magic * deltaTime;
+                if (horse.TimeStopTimer > 0f)
+                {
+                    horse.CurrentSpeed = 0f;
+                    continue;
+                }
 
-                var manaCost = horse.Skill != null ? horse.Skill.ManaCost : MaxMana;
+                horse.TickSkillEffect(deltaTime);
+                horse.SkillCooldown = Mathf.Max(0f, horse.SkillCooldown - deltaTime);
+                if (horse.StunTimer > 0f)
+                {
+                    horse.CurrentSpeed = 0f;
+                    continue;
+                }
+
+                var manaCost = GetManaCost(horse);
+                horse.Mana = Mathf.Min(manaCost, horse.Mana + horse.Magic * deltaTime);
                 if (horse.Mana >= manaCost)
                 {
                     horse.Mana = CastSkill(horse);
                 }
 
                 var staminaPressure = Mathf.Max(0f, horse.Fatigue - horse.Stamina * 1.4f);
-                var targetSpeed = horse.Speed + horse.RelicSpeedBonus + horse.TemporarySpeed - staminaPressure * 0.08f;
+                // 피로가 지구력의 완충 범위를 넘은 뒤부터 목표 속도를 깎는다.
+                var targetSpeed = horse.Speed
+                    + horse.RelicSpeedBonus
+                    + horse.TemporarySpeed
+                    + horse.TimedSpeedBonus
+                    - staminaPressure * 0.08f;
                 targetSpeed += UnityEngine.Random.Range(-0.18f, 0.18f);
 
-                var acceleration = (horse.Acceleration + horse.TemporaryAcceleration) * 0.7f;
+                var acceleration = (horse.Acceleration
+                    + horse.TemporaryAcceleration
+                    + horse.TimedAccelerationBonus) * 0.7f;
                 horse.CurrentSpeed = Mathf.MoveTowards(horse.CurrentSpeed, targetSpeed, acceleration * deltaTime);
                 horse.Distance += Mathf.Max(1.5f, horse.CurrentSpeed) * deltaTime;
-                horse.Fatigue += deltaTime * Mathf.Lerp(0.85f, 1.45f, horse.Distance / TrackLength);
+                horse.Fatigue += deltaTime * Mathf.Lerp(0.85f, 1.45f, horse.Distance / GetTrackLength());
 
                 horse.TemporarySpeed = Mathf.MoveTowards(horse.TemporarySpeed, 0f, deltaTime * 2.4f);
                 horse.TemporaryAcceleration = Mathf.MoveTowards(horse.TemporaryAcceleration, 0f, deltaTime * 2.1f);
                 horse.AnimateRun(deltaTime);
 
-                if (horse.Distance >= TrackLength)
+                if (horse.Distance >= GetTrackLength())
                 {
-                    horse.Distance = TrackLength;
+                    horse.Distance = GetTrackLength();
                     horse.Finished = true;
                     horse.FinishTime = raceClock;
                 }
@@ -395,7 +547,12 @@ namespace Malatro
                 return horse.Mana;
             }
 
-            return horse.Skill.Activate(horse, TrackLength);
+            if (!horse.Skill.CanActivate(horse, field))
+            {
+                return horse.Mana;
+            }
+
+            return horse.Skill.Activate(horse, GetTrackLength(), field);
         }
 
         private void FinishRace()
@@ -413,6 +570,7 @@ namespace Malatro
                 .Sum(GetRelicAdjustedPayout);
             if (hitCount > 0 && relicInventory.Contains(RelicEffectType.ProphetReward))
             {
+                // 예언가 유물은 적중 티켓 수가 늘수록 보상을 제곱으로 증폭한다.
                 payout *= hitCount * hitCount;
             }
             gold += payout;
@@ -443,7 +601,22 @@ namespace Malatro
 
         private int GetRelicAdjustedPayout(BetTicket ticket)
         {
-            var payout = ticket.ExpectedPayout;
+            var baseGoldBonus = 0;
+            if (ticket.Type == BetType.Place && relicInventory.Contains(RelicEffectType.PlaceBaseGoldBonus))
+            {
+                baseGoldBonus += 30;
+            }
+            if (ticket.Type == BetType.Win && relicInventory.Contains(RelicEffectType.WinBaseGoldBonus))
+            {
+                baseGoldBonus += 30;
+            }
+            if ((ticket.Type == BetType.Exacta || ticket.Type == BetType.Quinella)
+                && relicInventory.Contains(RelicEffectType.CombinationBaseGoldBonus))
+            {
+                baseGoldBonus += 30;
+            }
+
+            var payout = ticket.GetExpectedPayout(baseGoldBonus);
             if (ticket.Type == BetType.Win && relicInventory.Contains(RelicEffectType.WinPayoutBonus))
             {
                 payout = Mathf.RoundToInt(payout * 1.5f);
@@ -463,6 +636,7 @@ namespace Malatro
                 var horse = latestStandings[i];
                 var oldOdds = horse.WinOdds;
 
+                // 상위권 말은 다음 배당을 낮추고, 하위권 말은 위험도에 맞춰 배당을 높인다.
                 if (i == 0)
                 {
                     horse.WinOdds *= 0.78f;
@@ -505,6 +679,7 @@ namespace Malatro
 
             raceNumber++;
             DriftStatsBetweenRaces();
+            GenerateRaceData();
             GenerateTickets();
             phase = GamePhase.Betting;
             if (raceNumber % RacesPerRound != 1)
@@ -546,6 +721,7 @@ namespace Malatro
         {
             foreach (var horse in field)
             {
+                // 주요 능력치를 가중 합산한 평점을 배당으로 뒤집어 강한 말일수록 낮은 배당을 갖게 한다.
                 var rating = horse.Speed * 0.38f + horse.Acceleration * 0.22f + horse.Stamina * 0.22f + horse.Magic * 0.08f;
                 var oddsRange = horse.Data != null ? horse.Data.OpeningOddsRange : new Vector2(1.6f, 9.8f);
                 horse.WinOdds = Mathf.Clamp(14f - rating + RollFloat(-0.65f, 0.65f), oddsRange.x, oddsRange.y);
@@ -556,6 +732,7 @@ namespace Malatro
         {
             var target = GetCameraTarget();
             var targetDistance = target != null ? target.Distance : 0f;
+            // 프레임률과 무관한 지수 보간으로 선두 또는 선택한 말을 부드럽게 추적한다.
             cameraDistance = Mathf.Lerp(cameraDistance, targetDistance, 1f - Mathf.Exp(-5f * deltaTime));
         }
 
@@ -593,7 +770,10 @@ namespace Malatro
         private void DrawTrack()
         {
             var trackRect = new Rect(32f, 142f, Screen.width - 64f, 306f);
-            DrawRect(trackRect, new Color(0.12f, 0.16f, 0.14f, 0.98f));
+            var trackColor = currentRace != null && currentRace.Surface == TrackSurface.Dirt
+                ? new Color(0.24f, 0.16f, 0.1f, 0.98f)
+                : new Color(0.12f, 0.2f, 0.12f, 0.98f);
+            DrawRect(trackRect, trackColor);
             GUI.Box(trackRect, GUIContent.none, cardStyle);
 
             var infoWidth = Mathf.Clamp(trackRect.width * 0.24f, 245f, 360f);
@@ -613,7 +793,15 @@ namespace Malatro
                 DrawRect(new Rect(raceViewport.x, y + 31f, raceViewport.width, 2f), new Color(0.48f, 0.56f, 0.48f, 0.38f));
                 GUI.Label(new Rect(trackRect.x + 16f, y, infoWidth - 105f, 20f), GetHorseName(horse), bodyStyle);
                 GUI.Label(new Rect(trackRect.x + infoWidth - 92f, y, 70f, 20f), $"{horse.WinOdds:0.0}x", smallStyle);
-                DrawManaBar(new Rect(trackRect.x + 16f, y + 23f, infoWidth - 38f, 7f), horse.Mana / MaxMana);
+                var manaCost = GetManaCost(horse);
+                DrawManaBar(
+                    new Rect(trackRect.x + 16f, y + 25f, infoWidth - 122f, 7f),
+                    horse.Mana,
+                    manaCost);
+                GUI.Label(
+                    new Rect(trackRect.x + infoWidth - 101f, y + 17f, 80f, 20f),
+                    $"{horse.Mana:0}/{manaCost:0}",
+                    centeredStyle);
             }
 
             DrawHorseCharacters(raceViewport);
@@ -625,7 +813,7 @@ namespace Malatro
             GUI.BeginGroup(viewport);
             var pixelsPerDistance = viewport.width / CameraViewDistance;
             var centerX = viewport.width * 0.48f;
-            var finishX = centerX + (TrackLength - cameraDistance) * pixelsPerDistance;
+            var finishX = centerX + (GetTrackLength() - cameraDistance) * pixelsPerDistance;
             if (finishX > -10f && finishX < viewport.width + 10f)
             {
                 DrawRect(new Rect(finishX, 0f, 4f, viewport.height), new Color(1f, 0.87f, 0.38f, 0.95f));
@@ -644,6 +832,28 @@ namespace Malatro
                 var frameRect = new Rect(horse.AnimationFrame * 0.5f, 0f, 0.5f, 1f);
                 var baseRect = new Rect(x - 36f, y, 72f, 92f);
                 var effect = horse.SkillEffectAmount;
+                if (horse.TimeStopTimer > 0f)
+                {
+                    var stopPulse = 0.22f + Mathf.PingPong(Time.time * 2f, 0.18f);
+                    DrawRect(
+                        ScaleRect(baseRect, 1.16f),
+                        new Color(0.42f, 0.28f, 1f, stopPulse));
+                    GUI.Label(
+                        new Rect(baseRect.x - 28f, baseRect.y - 15f, baseRect.width + 56f, 20f),
+                        $"{L("time_stopped")} {horse.TimeStopTimer:0.0}s",
+                        centeredStyle);
+                }
+                if (horse.StunTimer > 0f)
+                {
+                    var stunPulse = 0.35f + Mathf.PingPong(Time.time * 5f, 0.45f);
+                    DrawRect(
+                        ScaleRect(baseRect, 1.12f),
+                        new Color(1f, 0.78f, 0.12f, stunPulse));
+                    GUI.Label(
+                        new Rect(baseRect.x - 20f, baseRect.y - 15f, baseRect.width + 40f, 20f),
+                        $"{L("stunned")} {horse.StunTimer:0.0}s",
+                        centeredStyle);
+                }
                 if (effect > 0f)
                 {
                     var effectColor = GetSkillEffectColor(horse.Skill);
@@ -670,6 +880,14 @@ namespace Malatro
                 }
 
                 GUI.DrawTextureWithTexCoords(baseRect, horse.RunSheet, frameRect, true);
+                if (horse.TimeStopTimer > 0f)
+                {
+                    DrawTintedSprite(
+                        baseRect,
+                        horse.RunSheet,
+                        frameRect,
+                        new Color(0.48f, 0.34f, 1f, 0.38f));
+                }
             }
 
             GUI.EndGroup();
@@ -689,7 +907,7 @@ namespace Malatro
                     continue;
                 }
 
-                var x = Mathf.Lerp(-7.0f, 6.8f, horse.Distance / TrackLength);
+                var x = Mathf.Lerp(-7.0f, 6.8f, horse.Distance / GetTrackLength());
                 var y = 3.05f - horse.Lane * 0.72f;
                 horse.Visual.transform.position = new Vector3(x, y, 0f);
             }
@@ -704,6 +922,13 @@ namespace Malatro
                 new Rect(264f, 48f, 520f, 26f),
                 $"{L("round")} {roundNumber}  |  {L("race")} {GetRaceInRound()}/{RacesPerRound}  |  {L("round_goal")} {roundEarnedGold:N0}/{roundTargetGold:N0}",
                 bodyStyle);
+            if (currentRace != null)
+            {
+                GUI.Label(
+                    new Rect(800f, 46f, Screen.width - 990f, 42f),
+                    $"{currentRace.GetName(language == UiLanguage.Korean)}  |  {currentRace.League}\n{currentRace.GetSurfaceName(language == UiLanguage.Korean)}  |  {currentRace.TotalDistanceMeters}m",
+                    bodyStyle);
+            }
 
             if (GUI.Button(new Rect(Screen.width - 170f, 12f, 142f, 32f), language == UiLanguage.Korean ? "한국어 | EN" : "English | KR", buttonStyle))
             {
@@ -752,7 +977,7 @@ namespace Malatro
             var endX = Screen.width - 205f;
             var width = Mathf.Max(180f, endX - startX);
             var lineY = 58f;
-            var leaderProgress = field.Max(horse => Mathf.Clamp01(horse.Distance / TrackLength));
+            var leaderProgress = field.Max(horse => Mathf.Clamp01(horse.Distance / GetTrackLength()));
 
             GUI.Label(new Rect(startX - 42f, lineY - 8f, 38f, 20f), "0%", smallStyle);
             GUI.Label(new Rect(startX + width + 5f, lineY - 8f, 46f, 20f), "100%", smallStyle);
@@ -772,7 +997,7 @@ namespace Malatro
                 .ThenBy(horse => horse.Lane)
                 .ToList();
             var iconCenters = orderedHorses
-                .Select(horse => startX + width * Mathf.Clamp01(horse.Distance / TrackLength))
+                .Select(horse => startX + width * Mathf.Clamp01(horse.Distance / GetTrackLength()))
                 .ToArray();
 
             for (var i = 1; i < iconCenters.Length; i++)
@@ -801,7 +1026,7 @@ namespace Malatro
             for (var i = 0; i < orderedHorses.Count; i++)
             {
                 var horse = orderedHorses[i];
-                var progress = Mathf.Clamp01(horse.Distance / TrackLength);
+                var progress = Mathf.Clamp01(horse.Distance / GetTrackLength());
                 var actualX = startX + width * progress;
                 var iconX = iconCenters[i];
                 var connectorStart = Mathf.Min(actualX, iconX);
@@ -820,6 +1045,19 @@ namespace Malatro
                     var auraRect = ScaleRect(iconRect, 1.45f);
                     DrawRect(auraRect, new Color(effectColor.r, effectColor.g, effectColor.b, 0.45f * effect));
                     iconRect = ScaleRect(iconRect, pulse);
+                }
+
+                if (horse.StunTimer > 0f)
+                {
+                    DrawRect(
+                        new Rect(iconRect.x - 3f, iconRect.y - 3f, iconRect.width + 6f, iconRect.height + 6f),
+                        new Color(1f, 0.78f, 0.12f, 0.95f));
+                }
+                if (horse.TimeStopTimer > 0f)
+                {
+                    DrawRect(
+                        new Rect(iconRect.x - 4f, iconRect.y - 4f, iconRect.width + 8f, iconRect.height + 8f),
+                        new Color(0.48f, 0.34f, 1f, 0.95f));
                 }
 
                 if (horse == tracked)
@@ -917,7 +1155,7 @@ namespace Malatro
                     CycleTicketHorse(ticket, true);
                 }
 
-                GUI.Label(new Rect(rect.x + 12f, rect.y + 80f, rect.width - 24f, 22f), $"{ticket.Odds:0.0}x  |  {L("payout")} {ticket.ExpectedPayout}", centeredStyle);
+                GUI.Label(new Rect(rect.x + 12f, rect.y + 80f, rect.width - 24f, 22f), $"{ticket.Odds:0.0}x  |  {L("payout")} {GetRelicAdjustedPayout(ticket)}", centeredStyle);
             }
 
             GUI.Label(
@@ -930,26 +1168,29 @@ namespace Malatro
         {
             var shopY = panel.y + 364f;
             GUI.Label(
-                new Rect(panel.x + 24f, shopY, 360f, 24f),
-                $"{L("relic_shop")}  |  {L("relic_inventory")} {relicInventory.Count}/{RelicInventory.MaximumCapacity}",
+                new Rect(panel.x + 24f, shopY, panel.width - 230f, 24f),
+                L("relic_shop"),
                 bodyStyle);
-
-            var relics = relicDatabase != null
-                ? relicDatabase.Relics.Where(relic => relic != null).ToList()
-                : new List<RelicData>();
-            if (relics.Count == 0)
+            if (GUI.Button(
+                    new Rect(panel.x + panel.width - 196f, shopY - 3f, 172f, 27f),
+                    $"{L("refresh_shop")} {relicShopRefreshCost}",
+                    buttonStyle))
             {
-                return;
+                RefreshRelicShop();
             }
 
             var gap = 10f;
-            var cardWidth = (panel.width - 48f - gap * (relics.Count - 1)) / relics.Count;
+            var cardWidth = (panel.width - 48f - gap * (RelicShopOfferCount - 1)) / RelicShopOfferCount;
             var cardY = shopY + 28f;
-            for (var i = 0; i < relics.Count; i++)
+            for (var i = 0; i < relicShopOffers.Count; i++)
             {
-                var relic = relics[i];
+                var relic = relicShopOffers[i];
                 var owned = relicInventory.Contains(relic);
-                var rect = new Rect(panel.x + 24f + i * (cardWidth + gap), cardY, cardWidth, 116f);
+                var rect = new Rect(
+                    panel.x + 24f + i * (cardWidth + gap),
+                    cardY,
+                    cardWidth,
+                    86f);
                 var tint = relic.Color;
                 DrawRect(rect, new Color(tint.r * 0.25f, tint.g * 0.25f, tint.b * 0.25f, 1f));
                 GUI.Box(rect, GUIContent.none, cardStyle);
@@ -959,23 +1200,50 @@ namespace Malatro
                     $"{relic.GetName(language == UiLanguage.Korean)}  [{GetRarityName(relic.Rarity)}]",
                     centeredStyle);
                 GUI.Label(
-                    new Rect(rect.x + 8f, rect.y + 28f, rect.width - 16f, 48f),
+                    new Rect(rect.x + 8f, rect.y + 27f, rect.width - 16f, 30f),
                     relic.GetDescription(language == UiLanguage.Korean),
                     smallStyle);
 
-                var buttonLabel = owned
-                    ? $"{L("sell")} +{relic.SellPrice}"
-                    : $"{L("buy")} {relic.Price}";
-                if (GUI.Button(new Rect(rect.x + 8f, rect.y + 80f, rect.width - 16f, 28f), buttonLabel, buttonStyle))
+                var buttonLabel = owned ? L("owned") : $"{L("buy")} {relic.Price}";
+                GUI.enabled = !owned;
+                if (GUI.Button(new Rect(rect.x + 8f, rect.y + 58f, rect.width - 16f, 23f), buttonLabel, buttonStyle))
                 {
-                    if (owned)
-                    {
-                        SellRelic(relic);
-                    }
-                    else
-                    {
-                        BuyRelic(relic);
-                    }
+                    BuyRelic(relic);
+                }
+                GUI.enabled = true;
+            }
+
+            DrawRelicInventory(panel, shopY + 120f);
+        }
+
+        private void DrawRelicInventory(Rect panel, float inventoryY)
+        {
+            GUI.Label(
+                new Rect(panel.x + 24f, inventoryY, panel.width - 48f, 22f),
+                $"{L("relic_inventory")} {relicInventory.Count}/{RelicInventory.MaximumCapacity}",
+                bodyStyle);
+
+            const int columns = RelicInventory.MaximumCapacity;
+            var gap = 10f;
+            var slotWidth = (panel.width - 48f - gap * (columns - 1)) / columns;
+            for (var i = 0; i < columns; i++)
+            {
+                var rect = new Rect(
+                    panel.x + 24f + i * (slotWidth + gap),
+                    inventoryY + 24f,
+                    slotWidth,
+                    34f);
+                if (i >= relicInventory.Count)
+                {
+                    GUI.Box(rect, L("empty_relic_slot"), cardStyle);
+                    continue;
+                }
+
+                var relic = relicInventory.Relics[i];
+                var label = $"{relic.GetName(language == UiLanguage.Korean)}  |  {L("sell")} +{relic.SellPrice}";
+                if (GUI.Button(rect, label, buttonStyle))
+                {
+                    SellRelic(relic);
                 }
             }
         }
@@ -1192,6 +1460,8 @@ namespace Malatro
                 case "stamina_short": return korean ? "지구력" : "STA";
                 case "magic_short": return korean ? "마력" : "MAG";
                 case "skill": return korean ? "스킬" : "Skill";
+                case "stunned": return korean ? "기절" : "STUN";
+                case "time_stopped": return korean ? "시간 정지" : "TIME STOP";
                 case "choose_ticket": return korean ? "세 장의 마권 중 하나를 선택하세요." : "Choose one of three tickets, then read the race.";
                 case "pick_ticket": return korean ? "세 장의 마권을 커스텀하고 Space로 출발하세요. 세 장 모두 적용됩니다." : "Customize all three tickets. Every ticket is active when the race starts.";
                 case "customize_all": return korean ? "마권 종류와 대상 말을 조정하세요. 세 장 모두 자동 적용됩니다." : "Customize the type and horses. All three tickets are automatically active.";
@@ -1211,6 +1481,9 @@ namespace Malatro
                 case "run_failed_title": return korean ? "라운드 실패" : "Round Failed";
                 case "relic_shop": return korean ? "유물 상점" : "Relic Shop";
                 case "relic_inventory": return korean ? "보유" : "Owned";
+                case "refresh_shop": return korean ? "새로고침" : "Refresh";
+                case "owned": return korean ? "보유 중" : "Owned";
+                case "empty_relic_slot": return korean ? "빈 유물 칸" : "Empty relic slot";
                 case "buy": return korean ? "구매" : "Buy";
                 case "sell": return korean ? "판매" : "Sell";
                 case "rarity_common": return korean ? "일반" : "Common";
@@ -1221,6 +1494,8 @@ namespace Malatro
                 case "relic_sold": return korean ? "{0} 판매. 골드 {1} 획득." : "Sold {0} for {1} gold.";
                 case "relic_full": return korean ? "유물은 최대 4개까지 보유할 수 있습니다." : "You can hold up to four relics.";
                 case "relic_need_gold": return korean ? "이 유물을 구매하려면 골드 {0}이 필요합니다." : "You need {0} gold to buy this relic.";
+                case "relic_refresh_need_gold": return korean ? "상점을 새로고침하려면 골드 {0}이 필요합니다." : "You need {0} gold to refresh the shop.";
+                case "relic_refreshed": return korean ? "골드 {0}을 사용해 상점을 갱신했습니다. 다음 비용은 {1}골드입니다." : "Spent {0} gold to refresh the shop. The next refresh costs {1}.";
                 default: return key;
             }
         }
@@ -1235,10 +1510,18 @@ namespace Malatro
             return (float)(minInclusive + rng.NextDouble() * (maxInclusive - minInclusive));
         }
 
-        private void DrawManaBar(Rect rect, float amount)
+        private float GetManaCost(Horse horse)
+        {
+            return horse != null && horse.Skill != null
+                ? Mathf.Max(1f, horse.Skill.ManaCost)
+                : DefaultManaCost;
+        }
+
+        private void DrawManaBar(Rect rect, float amount, float maximum)
         {
             DrawRect(rect, new Color(0.06f, 0.07f, 0.08f, 1f));
-            DrawRect(new Rect(rect.x, rect.y, rect.width * Mathf.Clamp01(amount), rect.height), new Color(0.37f, 0.72f, 0.92f, 1f));
+            var fill = Mathf.Clamp01(amount / Mathf.Max(1f, maximum));
+            DrawRect(new Rect(rect.x, rect.y, rect.width * fill, rect.height), new Color(0.37f, 0.72f, 0.92f, 1f));
         }
 
         private Color GetSkillEffectColor(HorseSkillData skill)
