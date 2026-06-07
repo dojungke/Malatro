@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ce1f6eed135c2044299b281cfd0bf40e, type: 3}
+  m_Name: RelicDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.RelicDatabase
+  Relics:
+  - {fileID: 11400000, guid: 3718761f9ad8f004e88841ae0ae4f105, type: 2}
+  - {fileID: 11400000, guid: 4b7e5b8f6446a0c41af0d4b53a493bbf, type: 2}
+  - {fileID: 11400000, guid: 9c555b83db81adb44ad6d860d936cab0, type: 2}
+  - {fileID: 11400000, guid: 5807045eacf497e438da71e714f547de, type: 2}
+  - {fileID: 11400000, guid: a8fa32a187d7bb2498d546f269ffefda, type: 2}

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: lightning-start
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: lightning-start
+  EnglishName: Lightning Start
+  KoreanName: "\uBC88\uAC1C \uCD9C\uBC1C"
+  EnglishDescription: 
+  KoreanDescription: 
+  ManaCost: 100
+  Cooldown: 1.2
+  EffectDuration: 1.1
+  RetainedMana: 0
+  EffectType: 0
+  SpeedBoost: 1.5
+  AccelerationBoost: 7
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  EffectColor: {r: 1, g: 0.86, b: 0.18, a: 1}
+  Icon: {fileID: 0}

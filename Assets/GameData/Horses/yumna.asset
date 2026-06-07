@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1434320e172a94043aa583fd06714d91, type: 3}
+  m_Name: yumna
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
+  Id: yumna
+  EnglishName: yumna
+  KoreanName: "\uC5FC\uB098"
+  EnglishShortName: yumna
+  KoreanShortName: "\uC5FC\uB098"
+  Speed:
+    Min: 7
+    Max: 13
+  Acceleration:
+    Min: 5
+    Max: 12
+  Stamina:
+    Min: 6
+    Max: 13
+  Magic:
+    Min: 8
+    Max: 18
+  OpeningOddsRange: {x: 1.8, y: 7.5}
+  RunSheet: {fileID: 2800000, guid: 34a25cef4f5df5c459c1edee0551f3f5, type: 3}
+  UiColor: {r: 1, g: 1, b: 1, a: 1}
+  SkillData: {fileID: 11400000, guid: e9f7bde53b2a3e348b051b6b86295d5b, type: 2}
+  legacySkill: 5

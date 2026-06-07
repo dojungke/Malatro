@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c61ac6eaa892f2f4ba9534cc4ee4bb06, type: 3}
+  m_Name: HorseDatabase
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseDatabase
+  Horses:
+  - {fileID: 11400000, guid: 7a614ac64c3548b409c0668b41f1fd17, type: 2}
+  - {fileID: 11400000, guid: c320e0a1668ab84449c43ef2af8bfe05, type: 2}
+  - {fileID: 11400000, guid: 8dd7d9c0d53c1ff458f92df1640926bd, type: 2}
+  - {fileID: 11400000, guid: 01e6fdc99adc93d418c076b20d51c349, type: 2}
+  - {fileID: 11400000, guid: 1570557912957804f9691351fe4f1783, type: 2}
+  - {fileID: 11400000, guid: 739da2fc5682c9f42bcd35a82f01e8b7, type: 2}

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: second-wind
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: second-wind
+  EnglishName: Second Wind
+  KoreanName: "\uB450 \uBC88\uC9F8 \uC228"
+  EnglishDescription: 
+  KoreanDescription: 
+  ManaCost: 100
+  Cooldown: 1.2
+  EffectDuration: 1.1
+  RetainedMana: 0
+  EffectType: 0
+  SpeedBoost: 1.2
+  AccelerationBoost: 0
+  FatigueRecovery: 7
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  EffectColor: {r: 0.3, g: 1, b: 0.5, a: 1}
+  Icon: {fileID: 0}
