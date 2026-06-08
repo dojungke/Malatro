@@ -51,6 +51,7 @@ namespace Malatro
         private int totalTicketsResolved;
         private float raceClock;
         private float resultDelay;
+        private float racePlaybackSpeed = 1f;
         private bool runComplete;
         private UiLanguage language = UiLanguage.Korean;
         private int cameraTargetLane = -1;
@@ -98,8 +99,9 @@ namespace Malatro
         {
             if (phase == GamePhase.Racing)
             {
-                TickRace(Time.deltaTime);
-                UpdateRaceCamera(Time.deltaTime);
+                var scaledDeltaTime = Time.deltaTime * racePlaybackSpeed;
+                TickRace(scaledDeltaTime);
+                UpdateRaceCamera(scaledDeltaTime);
             }
             else if (phase == GamePhase.Results)
             {
@@ -123,6 +125,22 @@ namespace Malatro
             else if (Keyboard.current.eKey.wasPressedThisFrame)
             {
                 CycleCameraTarget(1);
+            }
+
+            if (phase == GamePhase.Racing)
+            {
+                if (Keyboard.current.digit1Key.wasPressedThisFrame)
+                {
+                    racePlaybackSpeed = 1f;
+                }
+                else if (Keyboard.current.digit2Key.wasPressedThisFrame)
+                {
+                    racePlaybackSpeed = 1.5f;
+                }
+                else if (Keyboard.current.digit3Key.wasPressedThisFrame)
+                {
+                    racePlaybackSpeed = 2f;
+                }
             }
 
             if (phase == GamePhase.Betting)
@@ -184,6 +202,7 @@ namespace Malatro
             totalTicketsResolved = 0;
             raceClock = 0f;
             resultDelay = 0f;
+            racePlaybackSpeed = 1f;
             runComplete = false;
             phase = GamePhase.Betting;
             cameraTargetLane = -1;
@@ -298,14 +317,6 @@ namespace Malatro
                     .Where(race => race != null && race.League == league)
                     .ToList()
                 : new List<RaceData>();
-
-            if (candidates.Count == 0)
-            {
-                raceDatabase = RaceDatabase.CreateRuntimeDefaults();
-                candidates = raceDatabase.Races
-                    .Where(race => race != null && race.League == league)
-                    .ToList();
-            }
 
             currentRace = candidates.Count > 0
                 ? candidates[rng.Next(candidates.Count)]
@@ -497,23 +508,27 @@ namespace Malatro
                     continue;
                 }
 
+                var aptitudeMultiplier = GetSurfaceAptitudeMultiplier(horse);
                 var manaCost = GetManaCost(horse);
-                horse.Mana = Mathf.Min(manaCost, horse.Mana + horse.Magic * deltaTime);
+                var magic = Mathf.Max(0f, horse.Magic * aptitudeMultiplier + horse.RelicMagicBonus);
+                horse.Mana = Mathf.Min(manaCost, horse.Mana + magic * deltaTime);
                 if (horse.Mana >= manaCost)
                 {
                     horse.Mana = CastSkill(horse);
                 }
 
-                var staminaPressure = Mathf.Max(0f, horse.Fatigue - horse.Stamina * 1.4f);
+                var stamina = Mathf.Max(0f, horse.Stamina * aptitudeMultiplier + horse.RelicStaminaBonus);
+                var staminaPressure = Mathf.Max(0f, horse.Fatigue - stamina * 1.4f);
                 // 피로가 지구력의 완충 범위를 넘은 뒤부터 목표 속도를 깎는다.
-                var targetSpeed = horse.Speed
+                var targetSpeed = horse.Speed * aptitudeMultiplier
                     + horse.RelicSpeedBonus
                     + horse.TemporarySpeed
                     + horse.TimedSpeedBonus
                     - staminaPressure * 0.08f;
                 targetSpeed += UnityEngine.Random.Range(-0.18f, 0.18f);
 
-                var acceleration = (horse.Acceleration
+                var acceleration = Mathf.Max(0.1f, horse.Acceleration * aptitudeMultiplier
+                    + horse.RelicAccelerationBonus
                     + horse.TemporaryAcceleration
                     + horse.TimedAccelerationBonus) * 0.7f;
                 horse.CurrentSpeed = Mathf.MoveTowards(horse.CurrentSpeed, targetSpeed, acceleration * deltaTime);
@@ -570,9 +585,17 @@ namespace Malatro
                 .Sum(GetRelicAdjustedPayout);
             if (hitCount > 0 && relicInventory.Contains(RelicEffectType.ProphetReward))
             {
-                // 예언가 유물은 적중 티켓 수가 늘수록 보상을 제곱으로 증폭한다.
-                payout *= hitCount * hitCount;
+                payout *= 1 << hitCount;
             }
+            if (payout > 0 && relicInventory.Contains(RelicEffectType.TicketTypeVarietyReward))
+            {
+                var ticketTypeCount = offeredTickets
+                    .Select(ticket => ticket.Type)
+                    .Distinct()
+                    .Count();
+                payout *= 1 << ticketTypeCount;
+            }
+            payout = Mathf.RoundToInt(payout * GetLeaguePayoutMultiplier());
             gold += payout;
             roundEarnedGold += payout;
             hits += hitCount;
@@ -582,21 +605,100 @@ namespace Malatro
             UpdateOddsAfterRace();
         }
 
+        private float GetLeaguePayoutMultiplier()
+        {
+            if (currentRace == null)
+            {
+                return 1f;
+            }
+
+            return currentRace.League switch
+            {
+                RaceLeague.G2 => 1.5f,
+                RaceLeague.G1 => 2f,
+                _ => 1f
+            };
+        }
+
         private void ApplyPreRaceRelics()
         {
-            if (!relicInventory.Contains(RelicEffectType.HighestOddsSpeed))
+            if (currentRace == null)
             {
+                SetLog("race_data_missing", GetRequiredLeague());
                 return;
             }
 
-            var highestOddsHorse = field
-                .OrderByDescending(horse => horse.WinOdds)
-                .ThenBy(horse => horse.Lane)
-                .FirstOrDefault();
-            if (highestOddsHorse != null)
+            if (relicInventory.Contains(RelicEffectType.HighestOddsSpeed))
             {
-                highestOddsHorse.RelicSpeedBonus = 5f;
+                var highestOddsHorse = field
+                    .OrderByDescending(horse => horse.WinOdds)
+                    .ThenBy(horse => horse.Lane)
+                    .FirstOrDefault();
+                if (highestOddsHorse != null)
+                {
+                    highestOddsHorse.RelicSpeedBonus += 5f;
+                }
             }
+
+            if (relicInventory.Contains(RelicEffectType.MageTagSpeedPenalty))
+            {
+                foreach (var horse in field.Where(IsMageTaggedHorse))
+                {
+                    horse.RelicSpeedBonus -= 3f;
+                }
+            }
+
+            if (relicInventory.Contains(RelicEffectType.AssassinTagAccelerationPenalty))
+            {
+                foreach (var horse in field.Where(IsAssassinTaggedHorse))
+                {
+                    horse.RelicAccelerationBonus -= 3f;
+                }
+            }
+
+            if (relicInventory.Contains(RelicEffectType.KnightTagSpeedPenalty))
+            {
+                foreach (var horse in field.Where(IsKnightTaggedHorse))
+                {
+                    horse.RelicSpeedBonus -= 3f;
+                }
+            }
+
+            if (relicInventory.Contains(RelicEffectType.MageTagMagicBonus))
+            {
+                foreach (var horse in field.Where(IsMageTaggedHorse))
+                {
+                    horse.RelicMagicBonus += 2f;
+                }
+            }
+
+            if (relicInventory.Contains(RelicEffectType.KingdomTagStaminaBonus))
+            {
+                foreach (var horse in field.Where(IsKingdomTaggedHorse))
+                {
+                    horse.RelicStaminaBonus += 2f;
+                }
+            }
+        }
+
+        private static bool IsMageTaggedHorse(Horse horse)
+        {
+            return horse.HasAnyTag(new[] { "\uB9C8\uBC95\uC0AC", "Mage", "Wizard" });
+        }
+
+        private static bool IsAssassinTaggedHorse(Horse horse)
+        {
+            return horse.HasAnyTag(new[] { "\uC554\uC0B4\uC790", "Assassin" });
+        }
+
+        private static bool IsKnightTaggedHorse(Horse horse)
+        {
+            return horse.HasAnyTag(new[] { "\uAE30\uC0AC", "Knight" });
+        }
+
+        private static bool IsKingdomTaggedHorse(Horse horse)
+        {
+            return horse.HasAnyTag(new[] { "\uC655\uAD6D\uC778", "Kingdom", "Royal" });
         }
 
         private int GetRelicAdjustedPayout(BetTicket ticket)
@@ -627,6 +729,16 @@ namespace Malatro
             }
 
             return payout;
+        }
+
+        private float GetSurfaceAptitudeMultiplier(Horse horse)
+        {
+            if (horse == null || horse.Data == null || currentRace == null)
+            {
+                return 1f;
+            }
+
+            return horse.Data.GetAptitudeMultiplier(currentRace.Surface);
         }
 
         private void UpdateOddsAfterRace()
@@ -691,6 +803,16 @@ namespace Malatro
         private int GetRaceInRound()
         {
             return (raceNumber - 1) % RacesPerRound + 1;
+        }
+
+        private RaceLeague GetRequiredLeague()
+        {
+            return GetRaceInRound() switch
+            {
+                1 => RaceLeague.G3,
+                2 => RaceLeague.G2,
+                _ => RaceLeague.G1
+            };
         }
 
         private void DriftStatsBetweenRaces()
@@ -1347,7 +1469,8 @@ namespace Malatro
             DrawRect(panel, new Color(0.09f, 0.105f, 0.11f, 0.98f));
             var target = GetCameraTarget();
             GUI.Label(new Rect(panel.x + 24f, panel.y + 16f, 420f, 28f), $"{L("race_clock")}: {raceClock:0.0}s", titleStyle);
-            GUI.Label(new Rect(panel.x + 460f, panel.y + 18f, panel.width - 500f, 26f), $"{L("following")}: {(cameraTargetLane == -1 ? L("leader") : GetHorseName(target))}  (Q / E)", bodyStyle);
+            GUI.Label(new Rect(panel.x + 360f, panel.y + 18f, panel.width - 650f, 26f), $"{L("following")}: {(cameraTargetLane == -1 ? L("leader") : GetHorseName(target))}  (Q / E)", bodyStyle);
+            DrawRaceSpeedControls(panel);
             var ticketSummary = string.Join("   |   ", offeredTickets.Select((ticket, index) =>
                 $"{index + 1}. {ticket.GetLabel(language == UiLanguage.Korean, GetHorseName)}"));
             GUI.Label(new Rect(panel.x + 24f, panel.y + 50f, panel.width - 48f, 42f), ticketSummary, smallStyle);
@@ -1356,6 +1479,24 @@ namespace Malatro
                 .Where(horse => !string.IsNullOrEmpty(horse.SkillMessage))
                 .Select(horse => $"{GetHorseName(horse)}: {GetSkillName(horse.Skill)}");
             GUI.Label(new Rect(panel.x + 24f, panel.y + 82f, panel.width - 48f, 24f), string.Join("   ", messages), smallStyle);
+        }
+
+        private void DrawRaceSpeedControls(Rect panel)
+        {
+            var startX = panel.x + panel.width - 272f;
+            GUI.Label(new Rect(startX - 58f, panel.y + 18f, 54f, 24f), L("speed_control"), smallStyle);
+
+            var speeds = new[] { 1f, 1.5f, 2f };
+            for (var i = 0; i < speeds.Length; i++)
+            {
+                var speed = speeds[i];
+                var selected = Mathf.Approximately(racePlaybackSpeed, speed);
+                var label = selected ? $"[*] {speed:0.#}x" : $"{speed:0.#}x";
+                if (GUI.Button(new Rect(startX + i * 82f, panel.y + 12f, 76f, 32f), label, buttonStyle))
+                {
+                    racePlaybackSpeed = speed;
+                }
+            }
         }
 
         private void DrawResultsPanel()
@@ -1383,7 +1524,15 @@ namespace Malatro
 
         private string StatLine(Horse horse)
         {
-            return $"{L("speed_short")} {horse.Speed}  {L("accel_short")} {horse.Acceleration}  {L("stamina_short")} {horse.Stamina}  {L("magic_short")} {horse.Magic}  {GetSkillName(horse.Skill)}";
+            var aptitudeText = string.Empty;
+            if (horse.Data != null && currentRace != null)
+            {
+                var grade = horse.Data.GetAptitude(currentRace.Surface);
+                var percent = Mathf.RoundToInt(GetSurfaceAptitudeMultiplier(horse) * 100f);
+                aptitudeText = $"  {L("aptitude_short")} {grade} {percent}%";
+            }
+
+            return $"{L("speed_short")} {horse.Speed}  {L("accel_short")} {horse.Acceleration}  {L("stamina_short")} {horse.Stamina}  {L("magic_short")} {horse.Magic}{aptitudeText}  {GetSkillName(horse.Skill)}";
         }
 
         private Rect GetLowerPanel()
@@ -1450,6 +1599,7 @@ namespace Malatro
                 case "selected": return korean ? "선택됨" : "Selected";
                 case "select": return korean ? "선택" : "Select";
                 case "race_clock": return korean ? "경기 시간" : "Race clock";
+                case "speed_control": return korean ? "배속" : "Speed";
                 case "following": return korean ? "추적 중" : "Following";
                 case "results": return korean ? "경기 결과" : "Results";
                 case "odds": return korean ? "배당" : "odds";
@@ -1459,6 +1609,7 @@ namespace Malatro
                 case "accel_short": return korean ? "가속" : "ACC";
                 case "stamina_short": return korean ? "지구력" : "STA";
                 case "magic_short": return korean ? "마력" : "MAG";
+                case "aptitude_short": return korean ? "적성" : "APT";
                 case "skill": return korean ? "스킬" : "Skill";
                 case "stunned": return korean ? "기절" : "STUN";
                 case "time_stopped": return korean ? "시간 정지" : "TIME STOP";
@@ -1476,6 +1627,7 @@ namespace Malatro
                 case "meet_complete": return korean ? "시즌 종료. 마권 적중 {0}/{1}, 최종 골드 {2}." : "Meet complete. Ticket hits {0}/{1}, final gold {2}.";
                 case "next_race": return korean ? "{0}경주: 이전 결과에 따라 배당이 변동했습니다." : "Race {0}: odds moved after the last result.";
                 case "race_entry_free": return korean ? "레이스 참가비 무료" : "Free race entry";
+                case "race_data_missing": return korean ? "{0} 리그 경기 데이터가 DB에 없습니다." : "No {0} race is registered in the database.";
                 case "round_cleared": return korean ? "{0}라운드 통과! {1}골드를 획득했습니다. 다음 목표는 {2}골드입니다." : "Round {0} cleared with {1} gold. The next goal is {2} gold.";
                 case "round_failed": return korean ? "{0}라운드 실패. 획득 골드 {1}/{2}. 새로운 런을 시작하세요." : "Round {0} failed. Earned {1}/{2} gold. Start a new run.";
                 case "run_failed_title": return korean ? "라운드 실패" : "Round Failed";

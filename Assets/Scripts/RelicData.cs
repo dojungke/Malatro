@@ -19,7 +19,13 @@ namespace Malatro
         ProphetReward,
         PlaceBaseGoldBonus,
         WinBaseGoldBonus,
-        CombinationBaseGoldBonus
+        CombinationBaseGoldBonus,
+        TicketTypeVarietyReward,
+        MageTagSpeedPenalty,
+        AssassinTagAccelerationPenalty,
+        KnightTagSpeedPenalty,
+        MageTagMagicBonus,
+        KingdomTagStaminaBonus
     }
 
     [CreateAssetMenu(fileName = "RelicData", menuName = "Malatro/Relic Data")]

@@ -16,9 +16,10 @@ MonoBehaviour:
   EnglishName: Black Flame Delete Slash
   KoreanName: "\uD751\uC5FC\uC18C\uCC38"
   EnglishDescription: Stun all opponents within 50 meters ahead and behind for 1
-    second.
+    second. Activates only when a target is nearby.
   KoreanDescription: "\uC804\uD6C4\uBC29 50\uBBF8\uD130 \uC774\uB0B4\uC758 \uBAA8\uB4E0
-    \uC0C1\uB300\uB97C 1\uCD08 \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4."
+    \uC0C1\uB300\uB97C 1\uCD08 \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4.
+    \uBC94\uC704 \uC548\uC5D0 \uB9D0\uC774 \uC788\uC744 \uB54C\uB9CC \uBC1C\uB3D9\uD569\uB2C8\uB2E4."
   ManaCost: 100
   Cooldown: 1
   EffectDuration: 1.1

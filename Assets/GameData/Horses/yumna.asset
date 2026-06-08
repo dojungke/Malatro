@@ -13,10 +13,14 @@ MonoBehaviour:
   m_Name: yumna
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
   Id: yumna
-  EnglishName: yumna
-  KoreanName: "\uC5FC\uB098"
-  EnglishShortName: yumna
-  KoreanShortName: "\uC5FC\uB098"
+  EnglishName: Margrave Load
+  KoreanName: "\uBCC0\uACBD\uBC31"
+  EnglishShortName: Margrave
+  KoreanShortName: "\uBCC0\uACBD\uBC31"
+  Tags:
+  - "\uB9C8\uC871"
+  - "\uAE30\uC0AC"
+  - "\uC554\uC0B4\uC790"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +33,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 1
+  DirtAptitude: 3
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 34a25cef4f5df5c459c1edee0551f3f5, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

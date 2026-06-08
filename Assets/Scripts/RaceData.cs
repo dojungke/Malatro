@@ -28,7 +28,7 @@ namespace Malatro
         public TrackSurface Surface = TrackSurface.Turf;
         public RaceLeague League = RaceLeague.G3;
 
-        public float SimulationLength => TotalDistanceMeters / 16f;
+        public float SimulationLength => TotalDistanceMeters / 8f;
 
         public string GetName(bool korean)
         {

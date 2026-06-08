@@ -10,17 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1013e412cbcf61a4a9346d7138e12296, type: 3}
-  m_Name: prophet
+  m_Name: subsidy
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.RelicData
-  Id: prophet
-  EnglishName: Prophet
-  KoreanName: "\uC608\uC5B8\uAC00"
-  EnglishDescription: Multiply reward gold by 2 to the power of successful ticket
-    count.
-  KoreanDescription: "\uBCF4\uC0C1 \uACE8\uB4DC\uAC00 2^(\uC801\uC911\uD55C \uB9C8\uAD8C
-    \uAC1C\uC218)\uBC30\uAC00 \uB429\uB2C8\uB2E4."
-  Rarity: 3
-  EffectType: 4
-  Price: 120
-  Color: {r: 1, g: 0.68, b: 0.16, a: 1}
+  Id: subsidy
+  EnglishName: Subsidy
+  KoreanName: "\uC9C0\uC6D0\uAE08"
+  EnglishDescription: Horses with the Kingdom tag gain 2 Stamina.
+  KoreanDescription: "\uC655\uAD6D\uC778 \uD0DC\uADF8\uB97C \uAC00\uC9C4 \uB9D0\uC758
+    \uC2A4\uD14C\uBBF8\uB098\uAC00 2 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  Rarity: 0
+  EffectType: 13
+  Price: 30
+  Color: {r: 0.46, g: 0.78, b: 0.36, a: 1}
   Icon: {fileID: 0}

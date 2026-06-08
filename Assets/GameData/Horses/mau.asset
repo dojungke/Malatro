@@ -13,10 +13,14 @@ MonoBehaviour:
   m_Name: mau
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
   Id: mau
-  EnglishName: mau wolf
-  KoreanName: "\uB9C8\uC720"
-  EnglishShortName: mau
-  KoreanShortName: "\uB9C8\uC720"
+  EnglishName: apprentice wizard
+  KoreanName: "\uACAC\uC2B5 \uB9C8\uBC95\uC0AC"
+  EnglishShortName: apprentice
+  KoreanShortName: "\uACAC\uC2B5"
+  Tags:
+  - "\uB9C8\uC871"
+  - "\uB9C8\uBC95\uC0AC"
+  - "\uBAA8\uD5D8\uAC00"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +33,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 2
+  DirtAptitude: 1
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 4d0cc1ff4f859054eb02ceaf2f6e91bd, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

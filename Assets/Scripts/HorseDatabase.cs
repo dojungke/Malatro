@@ -39,6 +39,9 @@ namespace Malatro
                 data.KoreanName = definition.KoreanName;
                 data.EnglishShortName = definition.EnglishShortName;
                 data.KoreanShortName = definition.KoreanShortName;
+                data.Tags = new List<string>();
+                data.TurfAptitude = TrackAptitudeGrade.C;
+                data.DirtAptitude = TrackAptitudeGrade.C;
                 data.RunSheet = Resources.Load<Texture2D>(definition.ResourcePath);
                 data.SkillData = CreateRuntimeSkill(definition.SkillId);
                 data.UiColor = Color.HSVToRGB(i / (float)definitions.Length, 0.75f, 0.95f);
@@ -86,8 +89,8 @@ namespace Malatro
             {
                 case "lightning-start":
                     SetSkill(skill, "Black Goat Slash", "흑염소참", 0f, 0f, 0f, 0f, new Color(0.38f, 0.12f, 0.48f));
-                    skill.EnglishDescription = "Stun all opponents within 50 meters ahead and behind for 1 second.";
-                    skill.KoreanDescription = "전후방 50미터 이내의 모든 상대를 1초 동안 기절시킵니다.";
+                    skill.EnglishDescription = "Stun all opponents within 50 meters ahead and behind for 1 second. Activates only when a target is nearby.";
+                    skill.KoreanDescription = "전후방 50미터 이내의 모든 상대를 1초 동안 기절시킵니다. 범위 안에 말이 있을 때만 발동합니다.";
                     skill.EffectType = HorseSkillEffectType.AreaStun;
                     skill.AreaRadiusMeters = 50f;
                     skill.StunDuration = 1f;

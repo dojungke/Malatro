@@ -13,10 +13,13 @@ MonoBehaviour:
   m_Name: sany
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
   Id: sany
-  EnglishName: sany
-  KoreanName: "\uC0AC\uB2C8"
-  EnglishShortName: snay
-  KoreanShortName: "\uC0AC\uB2C8"
+  EnglishName: wandering magic merchant
+  KoreanName: "\uB5A0\uB3CC\uC774 \uB9C8\uBC95 \uC0C1\uC778"
+  EnglishShortName: merchant
+  KoreanShortName: "\uC0C1\uC778"
+  Tags:
+  - "\uC655\uAD6D\uC778"
+  - "\uB9C8\uBC95\uC0AC"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +32,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 2
+  DirtAptitude: 4
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 394e020cb8a88ca49b6940c8859ee26c, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

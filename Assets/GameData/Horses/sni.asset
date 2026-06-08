@@ -13,10 +13,13 @@ MonoBehaviour:
   m_Name: sni
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
   Id: sni
-  EnglishName: sni
-  KoreanName: "\uC218\uB0D0"
-  EnglishShortName: sni
-  KoreanShortName: "\uC218\uB0D0"
+  EnglishName: forest sniper
+  KoreanName: "\uC232 \uC800\uACA9\uC218"
+  EnglishShortName: sinper
+  KoreanShortName: "\uC800\uACA9\uC218"
+  Tags:
+  - "\uB9C8\uC871"
+  - "\uC554\uC0B4\uC790"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +32,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 0
+  DirtAptitude: 6
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 3f83cf79f5ed9b8419e7bebd38c8b9fe, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

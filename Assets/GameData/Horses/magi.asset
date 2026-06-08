@@ -13,10 +13,13 @@ MonoBehaviour:
   m_Name: magi
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
   Id: magi
-  EnglishName: magi wolf
-  KoreanName: "\uB9C8\uAE30"
-  EnglishShortName: magi
-  KoreanShortName: "\uB9C8\uAE30"
+  EnglishName: Arc Knight
+  KoreanName: "\uAE30\uC0AC\uB2E8\uC7A5"
+  EnglishShortName: Arc Knight
+  KoreanShortName: "\uAE30\uC0AC\uB2E8\uC7A5"
+  Tags:
+  - "\uB9C8\uC871"
+  - "\uAE30\uC0AC"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +32,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 2
+  DirtAptitude: 1
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: e3b9e2d1224e1ad498c5ef1c59fa3461, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

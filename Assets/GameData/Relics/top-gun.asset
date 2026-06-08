@@ -10,17 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1013e412cbcf61a4a9346d7138e12296, type: 3}
-  m_Name: prophet
+  m_Name: top-gun
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.RelicData
-  Id: prophet
-  EnglishName: Prophet
-  KoreanName: "\uC608\uC5B8\uAC00"
-  EnglishDescription: Multiply reward gold by 2 to the power of successful ticket
-    count.
-  KoreanDescription: "\uBCF4\uC0C1 \uACE8\uB4DC\uAC00 2^(\uC801\uC911\uD55C \uB9C8\uAD8C
-    \uAC1C\uC218)\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  Id: top-gun
+  EnglishName: Top Gun
+  KoreanName: "\uD0D1\uAC74"
+  EnglishDescription: Multiply reward gold by 2 to the power of ticket types used.
+  KoreanDescription: "\uBCF4\uC0C1 \uACE8\uB4DC\uAC00 2^(\uC0AC\uC6A9\uD55C \uB9C8\uAD8C
+    \uC885\uB958 \uC218)\uBC30\uAC00 \uB429\uB2C8\uB2E4."
   Rarity: 3
-  EffectType: 4
+  EffectType: 8
   Price: 120
-  Color: {r: 1, g: 0.68, b: 0.16, a: 1}
+  Color: {r: 0.2, g: 0.82, b: 0.94, a: 1}
   Icon: {fileID: 0}

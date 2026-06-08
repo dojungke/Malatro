@@ -87,6 +87,23 @@ namespace Malatro
                 return false;
             }
 
+            if (EffectType == HorseSkillEffectType.AreaStun)
+            {
+                var radius = AreaRadiusMeters / 16f;
+                foreach (var target in field)
+                {
+                    if (target != null
+                        && target != horse
+                        && !target.Finished
+                        && Mathf.Abs(target.Distance - horse.Distance) <= radius)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             if (EffectType == HorseSkillEffectType.Sniper)
             {
                 Horse leader = null;

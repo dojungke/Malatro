@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Malatro
@@ -22,6 +24,9 @@ namespace Malatro
         public float TimedAccelerationBonus;
         public float TimedBoostTimer;
         public float RelicSpeedBonus;
+        public float RelicAccelerationBonus;
+        public float RelicStaminaBonus;
+        public float RelicMagicBonus;
         public float Fatigue;
         public float Mana;
         public float FinishTime;
@@ -81,6 +86,9 @@ namespace Malatro
             TimedAccelerationBonus = 0f;
             TimedBoostTimer = 0f;
             RelicSpeedBonus = 0f;
+            RelicAccelerationBonus = 0f;
+            RelicStaminaBonus = 0f;
+            RelicMagicBonus = 0f;
             Fatigue = 0f;
             Mana = startingMana;
             FinishTime = 0f;
@@ -151,6 +159,42 @@ namespace Malatro
         public string GetStatLine()
         {
             return $"SPD {Speed}  ACC {Acceleration}  STA {Stamina}  MAG {Magic}  {GetSkillName()}";
+        }
+
+        public bool HasTag(string tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag) || Data == null || Data.Tags == null)
+            {
+                return false;
+            }
+
+            foreach (var horseTag in Data.Tags)
+            {
+                if (string.Equals(horseTag, tag, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool HasAnyTag(IEnumerable<string> tags)
+        {
+            if (tags == null)
+            {
+                return false;
+            }
+
+            foreach (var tag in tags)
+            {
+                if (HasTag(tag))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public string GetSkillName() => Skill != null ? Skill.EnglishName : "Skill";

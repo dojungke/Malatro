@@ -12,11 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1434320e172a94043aa583fd06714d91, type: 3}
   m_Name: purewhite
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
-  Id: purewhite
-  EnglishName: pure white
-  KoreanName: "\uC0C8\uD558\uC580"
-  EnglishShortName: white
-  KoreanShortName: "\uC0C8\uD558\uC580"
+  Id: pure-white
+  EnglishName: white witch
+  KoreanName: "\uD558\uC580 \uB9C8\uB140"
+  EnglishShortName: whitch
+  KoreanShortName: "\uB9C8\uB140"
+  Tags:
+  - "\uC655\uAD6D\uC778"
+  - "\uB9C8\uBC95\uC0AC"
   Speed:
     Min: 7
     Max: 13
@@ -29,6 +32,8 @@ MonoBehaviour:
   Magic:
     Min: 8
     Max: 18
+  TurfAptitude: 3
+  DirtAptitude: 3
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 57fc1004aab477641becef32d31f94e5, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}

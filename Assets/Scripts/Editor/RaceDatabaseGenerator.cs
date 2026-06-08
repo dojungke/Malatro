@@ -16,7 +16,7 @@ namespace Malatro.Editor
             EditorApplication.delayCall += CreateDefaultDatabaseIfMissing;
         }
 
-        [MenuItem("Malatro/Database/Create or Repair Default Race Database")]
+        [MenuItem("Malatro/Database/Create Empty Race Database")]
         public static void CreateDefaultDatabaseIfMissing()
         {
             EnsureFolder("Assets/GameData");
@@ -35,39 +35,9 @@ namespace Malatro.Editor
                 database.Races = new System.Collections.Generic.List<RaceData>();
             }
 
-            var defaults = RaceDatabase.CreateRuntimeDefaults();
-            foreach (var source in defaults.Races)
-            {
-                var path = $"{DataFolder}/{source.Id}.asset";
-                var race = AssetDatabase.LoadAssetAtPath<RaceData>(path);
-                if (race == null)
-                {
-                    race = ScriptableObject.CreateInstance<RaceData>();
-                    Copy(source, race);
-                    AssetDatabase.CreateAsset(race, path);
-                }
-
-                if (!database.Races.Contains(race))
-                {
-                    database.Races.Add(race);
-                }
-                EditorUtility.SetDirty(race);
-            }
-
             database.Races.RemoveAll(race => race == null);
             EditorUtility.SetDirty(database);
-            Object.DestroyImmediate(defaults);
             AssetDatabase.SaveAssets();
-        }
-
-        private static void Copy(RaceData source, RaceData target)
-        {
-            target.Id = source.Id;
-            target.EnglishName = source.EnglishName;
-            target.KoreanName = source.KoreanName;
-            target.TotalDistanceMeters = source.TotalDistanceMeters;
-            target.Surface = source.Surface;
-            target.League = source.League;
         }
 
         private static void EnsureFolder(string path)

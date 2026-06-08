@@ -72,6 +72,8 @@ namespace Malatro.Editor
                     data.Acceleration = new IntStatRange(5, 12);
                     data.Stamina = new IntStatRange(6, 13);
                     data.Magic = new IntStatRange(8, 18);
+                    data.TurfAptitude = TrackAptitudeGrade.C;
+                    data.DirtAptitude = TrackAptitudeGrade.C;
                     data.OpeningOddsRange = new Vector2(1.8f, 7.5f);
                     data.UiColor = Color.HSVToRGB(i / (float)defaults.Length, 0.75f, 0.95f);
                     data.RunSheet = AssetDatabase.LoadAssetAtPath<Texture2D>($"Assets/Resources/Horses/{seed.TextureName}.png");
