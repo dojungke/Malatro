@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1434320e172a94043aa583fd06714d91, type: 3}
+  m_Name: Mackerel
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
+  Id: mackerel
+  EnglishName: Mackerel
+  KoreanName: "\uACE0\uB4F1\uC5B4"
+  EnglishShortName: Mackerel
+  KoreanShortName: "\uACE0\uB4F1\uC5B4"
+  Tags:
+  - "\uB3D9\uBB3C"
+  - "\uBAA8\uD5D8\uAC00"
+  Speed:
+    Min: 1
+    Max: 1
+  Acceleration:
+    Min: 1
+    Max: 1
+  Stamina:
+    Min: 6
+    Max: 13
+  Magic:
+    Min: 8
+    Max: 18
+  TurfAptitude: 6
+  DirtAptitude: 6
+  OpeningOddsRange: {x: 1.8, y: 7.5}
+  RunSheet: {fileID: 2800000, guid: f307afa195a5a734298d1d1a024b4b2e, type: 3}
+  UiColor: {r: 1, g: 1, b: 1, a: 1}
+  SkillData: {fileID: 11400000, guid: b7c53f1b125b4fed889b9bb73dc10102, type: 2}
+  legacySkill: 5

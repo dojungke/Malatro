@@ -16,5 +16,15 @@ MonoBehaviour:
   EnglishName: Dark Oaks
   KoreanName: "\uC9D9\uC740 \uCC38\uB098\uBB34"
   TotalDistanceMeters: 2000
+  EntrantCount: 7
   Surface: 1
   League: 2
+  Corners:
+  - StartDistanceMeters: 520
+    LengthMeters: 300
+    Direction: 1
+    VisualStrength: 1
+  - StartDistanceMeters: 1320
+    LengthMeters: 320
+    Direction: -1
+    VisualStrength: 1.15

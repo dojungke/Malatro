@@ -17,7 +17,13 @@ namespace Malatro
         public float WinOdds;
         public float LastOddsDelta;
         public float Distance;
+        public float PreviousDistance;
         public float CurrentSpeed;
+        public float LaneOffset;
+        public float TargetLaneOffset;
+        public float PreferredLaneOffset;
+        public float LateralVelocity;
+        public bool IsPassing;
         public float TemporarySpeed;
         public float TemporaryAcceleration;
         public float TimedSpeedBonus;
@@ -34,6 +40,8 @@ namespace Malatro
         public float SkillEffectTimer;
         public float StunTimer;
         public float TimeStopTimer;
+        public float SpeedMultiplier = 1f;
+        public float SpeedMultiplierTimer;
         public bool Finished;
         public string SkillMessage;
         public HorseSkillData Skill;
@@ -79,7 +87,13 @@ namespace Malatro
         {
             // 영구 능력치와 배당은 유지하고 이번 경주에서만 쓰는 상태를 초기화한다.
             Distance = 0f;
+            PreviousDistance = 0f;
             CurrentSpeed = 0f;
+            LaneOffset = 0f;
+            TargetLaneOffset = 0f;
+            PreferredLaneOffset = 0f;
+            LateralVelocity = 0f;
+            IsPassing = false;
             TemporarySpeed = 0f;
             TemporaryAcceleration = 0f;
             TimedSpeedBonus = 0f;
@@ -96,6 +110,8 @@ namespace Malatro
             SkillEffectTimer = 0f;
             StunTimer = 0f;
             TimeStopTimer = 0f;
+            SpeedMultiplier = 1f;
+            SpeedMultiplierTimer = 0f;
             Finished = false;
             SkillMessage = string.Empty;
             animationClock = 0f;
@@ -139,6 +155,11 @@ namespace Malatro
         {
             SkillEffectTimer = Mathf.Max(0f, SkillEffectTimer - deltaTime);
             StunTimer = Mathf.Max(0f, StunTimer - deltaTime);
+            SpeedMultiplierTimer = Mathf.Max(0f, SpeedMultiplierTimer - deltaTime);
+            if (SpeedMultiplierTimer <= 0f)
+            {
+                SpeedMultiplier = 1f;
+            }
             TimedBoostTimer = Mathf.Max(0f, TimedBoostTimer - deltaTime);
             if (TimedBoostTimer <= 0f)
             {

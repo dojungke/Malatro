@@ -124,6 +124,32 @@ namespace Malatro
                     skill.EffectDuration = 5f;
                     skill.TimeStopDuration = 5f;
                     break;
+                case "howl":
+                    SetSkill(skill, "Howl", "울부짖기", 0f, 0f, 0f, 0f, new Color(0.5f, 0.72f, 1f));
+                    skill.EnglishDescription = "Reduce the speed of other horses within 100 meters by 30% for 3 seconds.";
+                    skill.KoreanDescription = "반경 100미터 내의 다른 말의 속도를 3초 동안 30% 감소시킵니다.";
+                    skill.EffectType = HorseSkillEffectType.AreaSlow;
+                    skill.EffectDuration = 1.4f;
+                    skill.AreaRadiusMeters = 100f;
+                    skill.SpeedReductionRatio = 0.3f;
+                    skill.DebuffDuration = 3f;
+                    break;
+                case "leap":
+                    SetSkill(skill, "Leap", "튀어오르기", 0f, 0f, 0f, 0f, new Color(0.2f, 0.85f, 0.9f));
+                    skill.EnglishDescription = "Leap 100 meters forward.";
+                    skill.KoreanDescription = "100미터 앞으로 튀어오릅니다.";
+                    skill.EffectType = HorseSkillEffectType.Leap;
+                    skill.EffectDuration = 1.1f;
+                    skill.ChargeDistanceMeters = 100f;
+                    break;
+                case "trip-up":
+                    SetSkill(skill, "Trip Up", "넘어트리기", 0f, 0f, 0f, 0f, new Color(0.58f, 0.5f, 0.42f));
+                    skill.EnglishDescription = "When mana is full, stun a horse that overtakes this horse for 1 second.";
+                    skill.KoreanDescription = "마나가 가득 찼을 때 이 말을 추월하는 말을 1초 동안 기절시킵니다.";
+                    skill.EffectType = HorseSkillEffectType.OvertakeTrip;
+                    skill.EffectDuration = 1.1f;
+                    skill.StunDuration = 1f;
+                    break;
                 default:
                     SetSkill(skill, "Star Ladder", "별사다리", 4f, 4f, 0f, 0f, new Color(1f, 0.35f, 0.72f));
                     skill.EnglishDescription = "Gain 4 Speed and Acceleration for 3 seconds. The effect increases by 25% for each horse ahead.";

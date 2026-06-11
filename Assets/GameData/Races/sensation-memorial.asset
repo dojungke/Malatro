@@ -16,5 +16,15 @@ MonoBehaviour:
   EnglishName: Sensation Memorial
   KoreanName: "\uC120\uD48D\uAE30\uB150"
   TotalDistanceMeters: 1200
+  EntrantCount: 6
   Surface: 1
   League: 0
+  Corners:
+  - StartDistanceMeters: 330
+    LengthMeters: 190
+    Direction: -1
+    VisualStrength: 0.85
+  - StartDistanceMeters: 760
+    LengthMeters: 200
+    Direction: 1
+    VisualStrength: 1

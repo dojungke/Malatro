@@ -40,6 +40,7 @@ namespace Malatro.Editor
             if (database != null && database.Horses != null && database.Horses.Count > 0)
             {
                 MigrateExistingHorseSkills(database);
+                AssignCustomHorseSkills(database);
                 EditorUtility.SetDirty(database);
                 AssetDatabase.SaveAssets();
                 return;
@@ -90,7 +91,32 @@ namespace Malatro.Editor
 
             EditorUtility.SetDirty(database);
             MigrateExistingHorseSkills(database);
+            AssignCustomHorseSkills(database);
             AssetDatabase.SaveAssets();
+        }
+
+        private static void AssignCustomHorseSkills(HorseDatabase database)
+        {
+            AssignCustomHorseSkill(database, "Assets/GameData/Horses/2Li.asset", "howl");
+            AssignCustomHorseSkill(database, "Assets/GameData/Horses/Mackerel.asset", "leap");
+            AssignCustomHorseSkill(database, "Assets/GameData/Horses/Rock.asset", "trip-up");
+        }
+
+        private static void AssignCustomHorseSkill(HorseDatabase database, string horsePath, string skillId)
+        {
+            var horse = AssetDatabase.LoadAssetAtPath<HorseData>(horsePath);
+            if (horse == null)
+            {
+                return;
+            }
+
+            horse.SkillData = LoadOrCreateSkill(skillId);
+            if (!database.Horses.Contains(horse))
+            {
+                database.Horses.Add(horse);
+            }
+
+            EditorUtility.SetDirty(horse);
         }
 
         private static void MigrateExistingHorseSkills(HorseDatabase database)

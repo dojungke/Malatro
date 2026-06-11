@@ -16,5 +16,15 @@ MonoBehaviour:
   EnglishName: Water Cup
   KoreanName: "\uBB3C \uCEF5"
   TotalDistanceMeters: 1600
+  EntrantCount: 6
   Surface: 0
   League: 0
+  Corners:
+  - StartDistanceMeters: 400
+    LengthMeters: 220
+    Direction: 1
+    VisualStrength: 0.8
+  - StartDistanceMeters: 980
+    LengthMeters: 260
+    Direction: 1
+    VisualStrength: 1.05

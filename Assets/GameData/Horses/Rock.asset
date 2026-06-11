@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1434320e172a94043aa583fd06714d91, type: 3}
+  m_Name: Rock
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
+  Id: rock
+  EnglishName: Rock
+  KoreanName: "\uB3CC"
+  EnglishShortName: Rock
+  KoreanShortName: "\uB3CC"
+  Tags:
+  - "\uAE30\uC0AC"
+  - "\uC554\uC0B4\uC790"
+  Speed:
+    Min: 7
+    Max: 13
+  Acceleration:
+    Min: 5
+    Max: 12
+  Stamina:
+    Min: 6
+    Max: 13
+  Magic:
+    Min: 8
+    Max: 18
+  TurfAptitude: 0
+  DirtAptitude: 0
+  OpeningOddsRange: {x: 1.8, y: 7.5}
+  RunSheet: {fileID: 2800000, guid: d78cf8b086c6a274a87b1332fd46865c, type: 3}
+  UiColor: {r: 1, g: 1, b: 1, a: 1}
+  SkillData: {fileID: 11400000, guid: c8d6402c236c40fe9a0cacd84ed21203, type: 2}
+  legacySkill: 5

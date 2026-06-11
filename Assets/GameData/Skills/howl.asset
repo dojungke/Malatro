@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: howl
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: howl
+  EnglishName: Howl
+  KoreanName: "\uC6B8\uBD80\uC9D6\uAE30"
+  EnglishDescription: Reduce the speed of other horses within 100 meters by 30% for 3 seconds.
+  KoreanDescription: "\uBC18\uACBD 100\uBBF8\uD130 \uB0B4\uC758 \uB2E4\uB978 \uB9D0\uC758 \uC18D\uB3C4\uB97C 3\uCD08 \uB3D9\uC548 30% \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
+  ManaCost: 100
+  Cooldown: 1.2
+  EffectDuration: 1.4
+  RetainedMana: 0
+  EffectType: 8
+  SpeedBoost: 0
+  AccelerationBoost: 0
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  ChargeDistanceMeters: 0
+  StunDuration: 0
+  TimeStopDuration: 0
+  BonusPerHorseAhead: 0.25
+  AreaRadiusMeters: 100
+  SpeedReductionRatio: 0.3
+  DebuffDuration: 3
+  EffectColor: {r: 0.5, g: 0.72, b: 1, a: 1}
+  Icon: {fileID: 0}

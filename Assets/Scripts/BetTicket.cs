@@ -14,7 +14,7 @@ namespace Malatro
     }
 
     [Serializable]
-    // 베팅 종류와 대상 말을 보관하고 배당 및 적중 여부를 계산한다.
+    // 踰좏똿 醫낅쪟? ???留먯쓣 蹂닿??섍퀬 諛곕떦 諛??곸쨷 ?щ?瑜?怨꾩궛?쒕떎.
     public sealed class BetTicket
     {
         public const int BasePayout = 10;
@@ -72,7 +72,7 @@ namespace Malatro
 
             switch (type)
             {
-                // 복합 베팅일수록 맞히기 어려운 만큼 두 말의 배당을 함께 반영한다.
+                // 蹂듯빀 踰좏똿?쇱닔濡?留욏엳湲??대젮??留뚰겮 ??留먯쓽 諛곕떦???④퍡 諛섏쁺?쒕떎.
                 case BetType.Win:
                     odds = first.WinOdds;
                     break;
@@ -95,33 +95,14 @@ namespace Malatro
 
         public string GetTypeName(bool korean)
         {
-            switch (type)
-            {
-                case BetType.Win: return korean ? "단승식" : "Win";
-                case BetType.Place: return korean ? "연승식" : "Place";
-                case BetType.Quinella: return korean ? "복승식" : "Quinella";
-                case BetType.Exacta: return korean ? "쌍승식" : "Exacta";
-                default: return korean ? "마권" : "Ticket";
-            }
+            return MalatroLocalization.GetBetTypeName(type, korean);
         }
 
         public string GetTargetText(bool korean, Func<Horse, string> horseName)
         {
             var firstName = horseName(first);
             var secondName = second != null ? horseName(second) : string.Empty;
-            switch (type)
-            {
-                case BetType.Win:
-                    return korean ? $"{firstName} 1위" : $"{firstName} must finish 1st.";
-                case BetType.Place:
-                    return korean ? $"{firstName} 3위 이내" : $"{firstName} must finish top 3.";
-                case BetType.Quinella:
-                    return korean ? $"{firstName} + {secondName} 순서 무관 2위 이내" : $"{firstName} + {secondName} top 2, any order.";
-                case BetType.Exacta:
-                    return korean ? $"{firstName} 1위, {secondName} 2위" : $"{firstName} 1st, {secondName} 2nd.";
-                default:
-                    return string.Empty;
-            }
+            return MalatroLocalization.GetBetTarget(type, firstName, secondName, korean);
         }
 
         public string GetLabel(bool korean, Func<Horse, string> horseName)
@@ -153,7 +134,7 @@ namespace Malatro
 
         private void NormalizeTargets()
         {
-            // 단일 대상 베팅은 두 번째 말을 버리고, 복합 베팅은 같은 말을 중복 선택하지 못하게 한다.
+            // ?⑥씪 ???踰좏똿? ??踰덉㎏ 留먯쓣 踰꾨━怨? 蹂듯빀 踰좏똿? 媛숈? 留먯쓣 以묐났 ?좏깮?섏? 紐삵븯寃??쒕떎.
             if (!NeedsSecondHorse)
             {
                 second = null;

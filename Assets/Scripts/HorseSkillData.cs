@@ -12,7 +12,10 @@ namespace Malatro
         Sniper,
         Transfer,
         StarStair,
-        AreaStun
+        AreaStun,
+        AreaSlow,
+        Leap,
+        OvertakeTrip
     }
 
     [CreateAssetMenu(fileName = "HorseSkillData", menuName = "Malatro/Horse Skill Data")]
@@ -44,6 +47,8 @@ namespace Malatro
         [Min(0f)] public float TimeStopDuration;
         [Min(0f)] public float BonusPerHorseAhead = 0.25f;
         [Min(0f)] public float AreaRadiusMeters;
+        [Range(0f, 1f)] public float SpeedReductionRatio;
+        [Min(0f)] public float DebuffDuration;
 
         [Header("Visual")]
         public Color EffectColor = Color.white;
@@ -59,9 +64,16 @@ namespace Malatro
             return korean && !string.IsNullOrWhiteSpace(KoreanDescription) ? KoreanDescription : EnglishDescription;
         }
 
+        public bool IsReactive => EffectType == HorseSkillEffectType.OvertakeTrip;
+
         public bool CanActivate(Horse horse, IReadOnlyList<Horse> field)
         {
             if (horse == null)
+            {
+                return false;
+            }
+
+            if (IsReactive)
             {
                 return false;
             }
@@ -87,9 +99,10 @@ namespace Malatro
                 return false;
             }
 
-            if (EffectType == HorseSkillEffectType.AreaStun)
+            if (EffectType == HorseSkillEffectType.AreaStun
+                || EffectType == HorseSkillEffectType.AreaSlow)
             {
-                var radius = AreaRadiusMeters / 16f;
+                var radius = MetersToSimulationDistance(AreaRadiusMeters);
                 foreach (var target in field)
                 {
                     if (target != null
@@ -152,7 +165,7 @@ namespace Malatro
             else if (EffectType == HorseSkillEffectType.KnightStrike)
             {
                 var startDistance = horse.Distance;
-                var chargeDistance = ChargeDistanceMeters / 16f;
+                var chargeDistance = MetersToSimulationDistance(ChargeDistanceMeters);
                 var endDistance = Mathf.Min(trackLength, startDistance + chargeDistance);
                 horse.Distance = endDistance;
 
@@ -260,7 +273,7 @@ namespace Malatro
             }
             else if (EffectType == HorseSkillEffectType.AreaStun && field != null)
             {
-                var radius = AreaRadiusMeters / 16f;
+                var radius = MetersToSimulationDistance(AreaRadiusMeters);
                 foreach (var target in field)
                 {
                     if (target == null || target == horse || target.Finished)
@@ -275,11 +288,59 @@ namespace Malatro
                     }
                 }
             }
+            else if (EffectType == HorseSkillEffectType.AreaSlow && field != null)
+            {
+                var radius = MetersToSimulationDistance(AreaRadiusMeters);
+                var speedMultiplier = 1f - Mathf.Clamp01(SpeedReductionRatio);
+                foreach (var target in field)
+                {
+                    if (target == null || target == horse || target.Finished)
+                    {
+                        continue;
+                    }
+
+                    if (Mathf.Abs(target.Distance - horse.Distance) <= radius)
+                    {
+                        target.SpeedMultiplier = Mathf.Min(target.SpeedMultiplier, speedMultiplier);
+                        target.SpeedMultiplierTimer = Mathf.Max(target.SpeedMultiplierTimer, DebuffDuration);
+                        target.CurrentSpeed *= speedMultiplier;
+                    }
+                }
+            }
+            else if (EffectType == HorseSkillEffectType.Leap)
+            {
+                horse.Distance = Mathf.Min(
+                    trackLength,
+                    horse.Distance + MetersToSimulationDistance(ChargeDistanceMeters));
+            }
 
             horse.SkillCooldown = Cooldown;
             horse.SkillEffectTimer = EffectDuration;
             horse.SkillMessage = EnglishName;
             return Mathf.Clamp(RetainedMana, 0f, Mathf.Max(1f, ManaCost));
+        }
+
+        public float ActivateOnOvertaken(Horse horse, Horse overtaker)
+        {
+            if (EffectType != HorseSkillEffectType.OvertakeTrip
+                || horse == null
+                || overtaker == null
+                || overtaker.Finished)
+            {
+                return horse != null ? horse.Mana : 0f;
+            }
+
+            overtaker.StunTimer = Mathf.Max(overtaker.StunTimer, StunDuration);
+            overtaker.CurrentSpeed = 0f;
+            horse.SkillCooldown = Cooldown;
+            horse.SkillEffectTimer = EffectDuration;
+            horse.SkillMessage = EnglishName;
+            return Mathf.Clamp(RetainedMana, 0f, Mathf.Max(1f, ManaCost));
+        }
+
+        private static float MetersToSimulationDistance(float meters)
+        {
+            return meters / 8f;
         }
     }
 }

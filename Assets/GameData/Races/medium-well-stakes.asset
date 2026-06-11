@@ -16,5 +16,15 @@ MonoBehaviour:
   EnglishName: 'Medium Well Stakes '
   KoreanName: "\uBBF8\uB514\uC6C0 \uC6D4\uB358 \uC2A4\uD14C\uC774\uD06C\uC2A4"
   TotalDistanceMeters: 1600
+  EntrantCount: 6
   Surface: 0
   League: 2
+  Corners:
+  - StartDistanceMeters: 430
+    LengthMeters: 230
+    Direction: -1
+    VisualStrength: 0.85
+  - StartDistanceMeters: 1030
+    LengthMeters: 250
+    Direction: 1
+    VisualStrength: 1

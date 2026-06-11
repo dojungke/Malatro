@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: trip-up
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: trip-up
+  EnglishName: Trip Up
+  KoreanName: "\uB118\uC5B4\uD2B8\uB9AC\uAE30"
+  EnglishDescription: stun a horse that overtakes this horse for 1 second.
+  KoreanDescription: "\uC774 \uB9D0\uC744 \uCD94\uC6D4\uD558\uB294 \uB9D0\uC744 1\uCD08
+    \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4."
+  ManaCost: 50
+  Cooldown: 1.2
+  EffectDuration: 1.1
+  RetainedMana: 0
+  EffectType: 10
+  SpeedBoost: 0
+  AccelerationBoost: 0
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  ChargeDistanceMeters: 0
+  StunDuration: 1
+  TimeStopDuration: 0
+  BonusPerHorseAhead: 0.25
+  AreaRadiusMeters: 0
+  SpeedReductionRatio: 0
+  DebuffDuration: 0
+  EffectColor: {r: 0.58, g: 0.5, b: 0.42, a: 1}
+  Icon: {fileID: 0}

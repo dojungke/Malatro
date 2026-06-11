@@ -16,5 +16,15 @@ MonoBehaviour:
   EnglishName: Well Done Stakes
   KoreanName: "\uC6F0\uB358 \uC2A4\uD14C\uC774\uD06C\uC2A4"
   TotalDistanceMeters: 2000
+  EntrantCount: 6
   Surface: 0
   League: 1
+  Corners:
+  - StartDistanceMeters: 600
+    LengthMeters: 280
+    Direction: 1
+    VisualStrength: 0.9
+  - StartDistanceMeters: 1400
+    LengthMeters: 300
+    Direction: 1
+    VisualStrength: 1.1

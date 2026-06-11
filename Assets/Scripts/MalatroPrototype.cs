@@ -6,21 +6,26 @@ using UnityEngine.InputSystem;
 
 namespace Malatro
 {
-    // 프로토타입의 게임 상태, 경주 시뮬레이션, 즉시 모드 UI를 한곳에서 관리한다.
-    public sealed class MalatroPrototype : MonoBehaviour
+    // ??ш끽維곩ㅇ??????怨룰틖 ?濡ろ뜐??????ㅺ컼?? ?濡ろ뜑??댁낄???????源낇꼧?? 癲ル슣鍮뽳쭕??癲ル슢?꾤땟???UI????癰궽블뀤????????굿?域밸Ŧ肉ョ뵳??
+    public sealed partial class MalatroPrototype : MonoBehaviour
     {
-        private const int FieldSize = 6;
+        private const int DefaultRaceEntrantCount = 6;
         private const int BaseTicketCount = 3;
         private const int RelicShopOfferCount = 3;
+        private const double HorseStatOfferChance = 0.3d;
         private const int StartingRelicShopRefreshCost = 30;
         private const int RacesPerRound = 3;
         private const int StartingRoundTarget = 50;
         private const float DefaultManaCost = 100f;
         private const float CameraViewDistance = 34f;
+        private const float FinalDuelCameraViewDistance = 24f;
 
+        private readonly List<Horse> roster = new();
         private readonly List<Horse> field = new();
         private readonly List<BetTicket> offeredTickets = new();
         private readonly List<RelicData> relicShopOffers = new();
+        private readonly List<HorseStatShopOffer> horseStatShopOffers = new();
+        private readonly List<ShopOfferEntry> shopOffers = new();
         private readonly System.Random rng = new();
 
         private GUIStyle titleStyle;
@@ -33,6 +38,7 @@ namespace Malatro
         private Font uiFont;
         private Texture2D whiteTexture;
         private Camera mainCamera;
+        private RaceWorldView raceWorldView;
         private HorseDatabase horseDatabase;
         private RelicDatabase relicDatabase;
         private RaceDatabase raceDatabase;
@@ -51,18 +57,31 @@ namespace Malatro
         private int totalTicketsResolved;
         private float raceClock;
         private float resultDelay;
+        private float podiumTransitionTimer;
+        private bool podiumTransitionPending;
         private float racePlaybackSpeed = 1f;
         private bool runComplete;
         private UiLanguage language = UiLanguage.Korean;
         private int cameraTargetLane = -1;
         private float cameraDistance;
+        private float raceCameraViewDistance = CameraViewDistance;
+        private int finishedCameraTargetLane = -1;
+        private float finishedCameraTargetDelay;
+        private int skillCameraTargetLane = -1;
+        private int cameraTargetBeforeSkill = -1;
+        private float skillCameraTargetTimer;
+        private Horse selectedHorseInfo;
+        private RelicData selectedRelicInfo;
+        private HorseStatShopOffer pendingHorseStatOffer;
+        private BetTicket editingTicket;
+        private TicketSelectionMode ticketSelectionMode;
         private string logKey = "choose_ticket";
         private object[] logArgs = Array.Empty<object>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
-            // 씬에 별도 오브젝트를 배치하지 않아도 플레이 모드에서 프로토타입을 시작한다.
+            // ?????怨뚮옓????????щ빘???됰씭肄???袁⑸즲????? ????깅떋????????癲ル슢?꾤땟?????????ш끽維곩ㅇ??????怨룰도 ??筌믨퀣援??筌먲퐢??
             if (FindAnyObjectByType<MalatroPrototype>() != null)
             {
                 return;
@@ -88,24 +107,48 @@ namespace Malatro
             mainCamera.transform.position = new Vector3(0f, 0f, -10f);
             mainCamera.backgroundColor = new Color(0.055f, 0.07f, 0.075f);
 
+            var raceWorldObject = new GameObject("Race World View");
+            raceWorldObject.transform.SetParent(transform, false);
+            raceWorldView = raceWorldObject.AddComponent<RaceWorldView>();
+            raceWorldView.Initialize(mainCamera);
+
             whiteTexture = Texture2D.whiteTexture;
             horseDatabase = HorseDatabase.LoadOrCreateRuntimeDefaults();
             relicDatabase = RelicDatabase.LoadOrCreateRuntimeDefaults();
             raceDatabase = RaceDatabase.LoadOrCreateRuntimeDefaults();
             StartNewRun();
+            BuildCanvasUi();
         }
 
         private void Update()
         {
             if (phase == GamePhase.Racing)
             {
-                var scaledDeltaTime = Time.deltaTime * racePlaybackSpeed;
-                TickRace(scaledDeltaTime);
-                UpdateRaceCamera(scaledDeltaTime);
+                if (podiumTransitionPending)
+                {
+                    podiumTransitionTimer = Mathf.Max(0f, podiumTransitionTimer - Time.deltaTime);
+                    if (podiumTransitionTimer <= 0f)
+                    {
+                        podiumTransitionPending = false;
+                        TransitionTo(GamePhase.Results);
+                    }
+                }
+                else
+                {
+                    var scaledDeltaTime = Time.deltaTime * racePlaybackSpeed;
+                    TickRace(scaledDeltaTime);
+                    UpdateRaceCamera(scaledDeltaTime, Time.deltaTime);
+                }
+                UpdateRaceWorldPresentation();
             }
             else if (phase == GamePhase.Results)
             {
                 resultDelay = Mathf.Max(0f, resultDelay - Time.deltaTime);
+                UpdateRaceWorldPresentation();
+            }
+            else
+            {
+                raceWorldView?.SetVisible(false, field);
             }
 
             if (Keyboard.current == null)
@@ -118,17 +161,17 @@ namespace Malatro
                 ToggleLanguage();
             }
 
-            if (Keyboard.current.qKey.wasPressedThisFrame)
-            {
-                CycleCameraTarget(-1);
-            }
-            else if (Keyboard.current.eKey.wasPressedThisFrame)
-            {
-                CycleCameraTarget(1);
-            }
-
             if (phase == GamePhase.Racing)
             {
+                if (Keyboard.current.qKey.wasPressedThisFrame)
+                {
+                    CycleCameraTarget(-1);
+                }
+                else if (Keyboard.current.eKey.wasPressedThisFrame)
+                {
+                    CycleCameraTarget(1);
+                }
+
                 if (Keyboard.current.digit1Key.wasPressedThisFrame)
                 {
                     racePlaybackSpeed = 1f;
@@ -158,15 +201,26 @@ namespace Malatro
 
         private void OnGUI()
         {
+            if (canvasUiReady)
+            {
+                return;
+            }
+
             EnsureStyles();
 
             DrawTopPanel();
-            DrawTrack();
+            if (phase == GamePhase.Racing || phase == GamePhase.Results)
+            {
+                DrawTrack();
+            }
 
             switch (phase)
             {
                 case GamePhase.Betting:
                     DrawBettingPanel();
+                    break;
+                case GamePhase.Shop:
+                    DrawShopPanel();
                     break;
                 case GamePhase.Racing:
                     DrawRacePanel();
@@ -175,11 +229,16 @@ namespace Malatro
                     DrawResultsPanel();
                     break;
             }
+
+            DrawHorseInfoPopup();
+            DrawRelicInfoPopup();
+            DrawTicketSelectionPopup();
+            DrawHorseStatOfferSelectionPopup();
         }
 
         private void StartNewRun()
         {
-            foreach (var horse in field)
+            foreach (var horse in roster)
             {
                 if (horse.Visual != null)
                 {
@@ -187,6 +246,7 @@ namespace Malatro
                 }
             }
 
+            roster.Clear();
             field.Clear();
             offeredTickets.Clear();
             relicShopOffers.Clear();
@@ -202,20 +262,23 @@ namespace Malatro
             totalTicketsResolved = 0;
             raceClock = 0f;
             resultDelay = 0f;
+            podiumTransitionTimer = 0f;
+            podiumTransitionPending = false;
             racePlaybackSpeed = 1f;
             runComplete = false;
-            phase = GamePhase.Betting;
+            TransitionTo(GamePhase.Betting, false);
             cameraTargetLane = -1;
             cameraDistance = 0f;
 
             var entries = horseDatabase.Horses
                 .Where(data => data != null)
-                .Take(FieldSize)
                 .ToList();
-            if (entries.Count < FieldSize)
+            if (entries.Count < 2)
             {
                 horseDatabase = HorseDatabase.CreateRuntimeDefaults();
-                entries = horseDatabase.Horses.Take(FieldSize).ToList();
+                entries = horseDatabase.Horses
+                    .Where(data => data != null)
+                    .ToList();
             }
 
             for (var i = 0; i < entries.Count; i++)
@@ -234,11 +297,12 @@ namespace Malatro
                     data.UiColor);
 
                 horse.Visual = CreateHorseVisual(horse);
-                field.Add(horse);
+                roster.Add(horse);
             }
 
             NormalizeOpeningOdds();
             GenerateRaceData();
+            SelectRaceEntrants();
             GenerateTickets();
             SetLog("pick_ticket");
         }
@@ -251,18 +315,9 @@ namespace Malatro
 
             if (texture != null)
             {
-                var frameWidth = texture.width / 2f;
                 var pixelsPerUnit = texture.height / 0.9f;
-                var firstFrame = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, frameWidth, texture.height),
-                    new Vector2(0.5f, 0.42f),
-                    pixelsPerUnit);
-                var secondFrame = Sprite.Create(
-                    texture,
-                    new Rect(frameWidth, 0f, frameWidth, texture.height),
-                    new Vector2(0.5f, 0.42f),
-                    pixelsPerUnit);
+                var firstFrame = CreateHorseFrameSprite(texture, false, pixelsPerUnit);
+                var secondFrame = CreateHorseFrameSprite(texture, true, pixelsPerUnit);
 
                 horse.SetRunFrames(renderer, firstFrame, secondFrame);
                 renderer.color = Color.white;
@@ -275,7 +330,26 @@ namespace Malatro
             }
 
             renderer.sortingOrder = 5;
+            visual.AddComponent<HorseWorldEffects>().Initialize(renderer);
+            visual.SetActive(false);
             return visual;
+        }
+
+        private static Sprite CreateHorseFrameSprite(Texture2D texture, bool secondFrame, float pixelsPerUnit = 100f)
+        {
+            if (texture == null)
+            {
+                return null;
+            }
+
+            var isTwoFrameSheet = texture.width >= texture.height * 1.9f;
+            var frameWidth = isTwoFrameSheet ? texture.width * 0.5f : texture.width;
+            var x = isTwoFrameSheet && secondFrame ? frameWidth : 0f;
+            return Sprite.Create(
+                texture,
+                new Rect(x, 0f, frameWidth, texture.height),
+                new Vector2(0.5f, 0.42f),
+                Mathf.Max(1f, pixelsPerUnit));
         }
 
         private Sprite BuildBlockSprite()
@@ -323,6 +397,43 @@ namespace Malatro
                 : null;
         }
 
+        private void SelectRaceEntrants()
+        {
+            foreach (var horse in roster)
+            {
+                if (horse.Renderer != null)
+                {
+                    horse.Renderer.enabled = false;
+                }
+            }
+
+            field.Clear();
+            var requestedCount = currentRace != null
+                ? currentRace.EntrantCount
+                : DefaultRaceEntrantCount;
+            var entrantCount = Mathf.Clamp(requestedCount, 2, roster.Count);
+            var candidates = roster.ToList();
+
+            for (var lane = 0; lane < entrantCount; lane++)
+            {
+                var selectedIndex = rng.Next(candidates.Count);
+                var horse = candidates[selectedIndex];
+                candidates.RemoveAt(selectedIndex);
+                horse.Lane = lane;
+                field.Add(horse);
+                if (horse.Renderer != null)
+                {
+                    horse.Renderer.enabled = horse.RunSheet == null;
+                }
+            }
+
+            selectedHorseInfo = null;
+            selectedRelicInfo = null;
+            pendingHorseStatOffer = null;
+            editingTicket = null;
+            cameraTargetLane = -1;
+        }
+
         private float GetTrackLength()
         {
             return currentRace != null ? currentRace.SimulationLength : 100f;
@@ -331,6 +442,8 @@ namespace Malatro
         private void RollRelicShop()
         {
             relicShopOffers.Clear();
+            horseStatShopOffers.Clear();
+            shopOffers.Clear();
             if (relicDatabase == null || relicDatabase.Relics == null)
             {
                 return;
@@ -341,16 +454,174 @@ namespace Malatro
                 .Distinct()
                 .ToList();
 
-            while (relicShopOffers.Count < RelicShopOfferCount && available.Count > 0)
+            while (shopOffers.Count < RelicShopOfferCount)
             {
-                var rarity = RollAvailableRelicRarity(available);
-                var candidates = available
-                    .Where(relic => relic.Rarity == rarity)
-                    .ToList();
+                var rarity = RollShopRarity();
+                var rollStatOffer = rng.NextDouble() < HorseStatOfferChance;
+                if (rollStatOffer || available.Count == 0)
+                {
+                    AddHorseStatShopOffer(rarity);
+                    continue;
+                }
+
+                var candidates = available.Where(relic => relic.Rarity == rarity).ToList();
+                if (candidates.Count == 0)
+                {
+                    candidates = available;
+                }
+
                 var selected = candidates[rng.Next(candidates.Count)];
                 relicShopOffers.Add(selected);
+                shopOffers.Add(new ShopOfferEntry { Relic = selected });
                 available.Remove(selected);
             }
+        }
+
+        private void AddHorseStatShopOffer(RelicRarity rarity)
+        {
+            if (roster.Count == 0)
+            {
+                return;
+            }
+
+            var requiresSelection = rng.NextDouble() < 0.5d;
+            var offer = CreateHorseStatShopOffer(rarity, requiresSelection);
+            horseStatShopOffers.Add(offer);
+            shopOffers.Add(new ShopOfferEntry { StatOffer = offer });
+        }
+
+        private HorseStatShopOffer CreateHorseStatShopOffer(RelicRarity rarity, bool requiresSelection)
+        {
+            var statCount = Enum.GetValues(typeof(HorseStatType)).Length;
+            var amount = GetHorseStatOfferAmount(rarity);
+            var signedAmount = rng.NextDouble() < 0.5d ? amount : -amount;
+            return new HorseStatShopOffer
+            {
+                Stat = (HorseStatType)rng.Next(statCount),
+                Rarity = rarity,
+                Amount = signedAmount,
+                Price = amount * 15 + (requiresSelection ? 20 : 0),
+                RequiresHorseSelection = requiresSelection,
+                RandomTarget = requiresSelection ? null : roster[rng.Next(roster.Count)]
+            };
+        }
+
+        private RelicRarity RollShopRarity()
+        {
+            var rarities = new[]
+            {
+                RelicRarity.Common,
+                RelicRarity.Rare,
+                RelicRarity.Epic,
+                RelicRarity.Legendary
+            };
+            var totalWeight = rarities.Sum(GetRelicRarityWeight);
+            var roll = rng.NextDouble() * totalWeight;
+            foreach (var rarity in rarities)
+            {
+                roll -= GetRelicRarityWeight(rarity);
+                if (roll <= 0d)
+                {
+                    return rarity;
+                }
+            }
+
+            return RelicRarity.Common;
+        }
+
+        private static int GetHorseStatOfferAmount(RelicRarity rarity)
+        {
+            return rarity switch
+            {
+                RelicRarity.Common => 2,
+                RelicRarity.Rare => 3,
+                RelicRarity.Epic => 5,
+                RelicRarity.Legendary => 10,
+                _ => 2
+            };
+        }
+
+        private void BuyHorseStatOffer(HorseStatShopOffer offer, Horse target)
+        {
+            if (offer == null || offer.Purchased || target == null)
+            {
+                return;
+            }
+
+            if (gold < offer.Price)
+            {
+                SetLog("stat_offer_need_gold", offer.Price);
+                return;
+            }
+
+            gold -= offer.Price;
+            ApplyHorseStatChange(target, offer.Stat, offer.Amount);
+            offer.Purchased = true;
+            SetLog(
+                "stat_offer_bought",
+                GetHorseName(target),
+                GetHorseStatName(offer.Stat),
+                GetSignedStatAmount(offer.Amount));
+        }
+
+        private static void ApplyHorseStatChange(Horse horse, HorseStatType stat, int amount)
+        {
+            switch (stat)
+            {
+                case HorseStatType.Speed:
+                    horse.Speed = Mathf.Clamp(horse.Speed + amount, 1, 30);
+                    break;
+                case HorseStatType.Acceleration:
+                    horse.Acceleration = Mathf.Clamp(horse.Acceleration + amount, 1, 30);
+                    break;
+                case HorseStatType.Stamina:
+                    horse.Stamina = Mathf.Clamp(horse.Stamina + amount, 1, 30);
+                    break;
+                case HorseStatType.Magic:
+                    horse.Magic = Mathf.Clamp(horse.Magic + amount, 1, 30);
+                    break;
+            }
+        }
+
+        private string GetHorseStatName(HorseStatType stat)
+        {
+            return stat switch
+            {
+                HorseStatType.Speed => L("speed_short"),
+                HorseStatType.Acceleration => L("accel_short"),
+                HorseStatType.Stamina => L("stamina_short"),
+                HorseStatType.Magic => L("magic_short"),
+                _ => stat.ToString()
+            };
+        }
+
+        private static string GetSignedStatAmount(int amount)
+        {
+            return amount >= 0 ? $"+{amount}" : amount.ToString();
+        }
+
+        private static int GetHorseStatValue(Horse horse, HorseStatType stat)
+        {
+            if (horse == null)
+            {
+                return 0;
+            }
+
+            return stat switch
+            {
+                HorseStatType.Speed => horse.Speed,
+                HorseStatType.Acceleration => horse.Acceleration,
+                HorseStatType.Stamina => horse.Stamina,
+                HorseStatType.Magic => horse.Magic,
+                _ => 0
+            };
+        }
+
+        private static int GetAdjustedHorseStatValue(Horse horse, HorseStatShopOffer offer)
+        {
+            return offer == null
+                ? 0
+                : Mathf.Clamp(GetHorseStatValue(horse, offer.Stat) + offer.Amount, 1, 30);
         }
 
         private RelicRarity RollAvailableRelicRarity(IReadOnlyCollection<RelicData> available)
@@ -413,7 +684,7 @@ namespace Malatro
         {
             var targetCount = BaseTicketCount + (relicInventory.Contains(RelicEffectType.ExtraTicket) ? 1 : 0);
 
-            // 같은 종류와 대상 조합의 티켓이 반복되지 않도록 제한 횟수만큼 다시 뽑는다.
+            // ??좊즵?? ???ろ꼤嶺?? ?????釉뚰?????????Β?利???袁⑸즵????? ????녳뵣??????モ뵲 ????낅묄癲ル슢???移????怨뺣빰 癲ル슢?筌???
             var attempts = 0;
             while (offeredTickets.Count < targetCount && attempts < 80)
             {
@@ -456,6 +727,11 @@ namespace Malatro
 
         private void StartRace()
         {
+            if (phase != GamePhase.Betting && phase != GamePhase.Shop)
+            {
+                return;
+            }
+
             if (runComplete)
             {
                 SetLog("season_complete");
@@ -465,17 +741,35 @@ namespace Malatro
             raceClock = 0f;
             resultDelay = 0f;
             latestStandings.Clear();
-            phase = GamePhase.Racing;
+            TransitionTo(GamePhase.Racing);
             cameraTargetLane = -1;
             cameraDistance = 0f;
+            raceCameraViewDistance = CameraViewDistance;
+            finishedCameraTargetLane = -1;
+            finishedCameraTargetDelay = 0f;
+            skillCameraTargetLane = -1;
+            cameraTargetBeforeSkill = -1;
+            skillCameraTargetTimer = 0f;
 
             foreach (var horse in field)
             {
                 horse.ResetForRace(UnityEngine.Random.Range(0f, GetManaCost(horse) * 0.38f));
             }
+            InitializeRaceLanes();
             ApplyPreRaceRelics();
 
             SetLog("race_started", roundNumber, GetRaceInRound(), offeredTickets.Count);
+        }
+
+        private void OpenShop()
+        {
+            if (runComplete || phase != GamePhase.Betting)
+            {
+                return;
+            }
+
+            TransitionTo(GamePhase.Shop);
+            SetLog("shop_before_race");
         }
 
         private void TickRace(float deltaTime)
@@ -484,6 +778,13 @@ namespace Malatro
             if (!worldTimeStopped)
             {
                 raceClock += deltaTime;
+            }
+
+            UpdateHorseLaneTargets(deltaTime);
+
+            foreach (var horse in field)
+            {
+                horse.PreviousDistance = horse.Distance;
             }
 
             foreach (var horse in field)
@@ -512,19 +813,23 @@ namespace Malatro
                 var manaCost = GetManaCost(horse);
                 var magic = Mathf.Max(0f, horse.Magic * aptitudeMultiplier + horse.RelicMagicBonus);
                 horse.Mana = Mathf.Min(manaCost, horse.Mana + magic * deltaTime);
-                if (horse.Mana >= manaCost)
+                if (horse.Mana >= manaCost
+                    && (horse.Skill == null || !horse.Skill.IsReactive))
                 {
                     horse.Mana = CastSkill(horse);
                 }
 
                 var stamina = Mathf.Max(0f, horse.Stamina * aptitudeMultiplier + horse.RelicStaminaBonus);
                 var staminaPressure = Mathf.Max(0f, horse.Fatigue - stamina * 1.4f);
-                // 피로가 지구력의 완충 범위를 넘은 뒤부터 목표 속도를 깎는다.
+                // ???⑥???좊읈? 癲ル슣??????㎥?????ш끽維뽭뇡??類?????끹걫???? ?????癲ル슢?꾤땟?룹춻?????뽦뵣??嚥싲갭큔????
                 var targetSpeed = horse.Speed * aptitudeMultiplier
                     + horse.RelicSpeedBonus
                     + horse.TemporarySpeed
                     + horse.TimedSpeedBonus
                     - staminaPressure * 0.08f;
+                targetSpeed *= horse.SpeedMultiplier;
+                targetSpeed -= GetCornerLanePenalty(horse);
+                targetSpeed = Mathf.Min(targetSpeed, GetTrafficSpeedLimit(horse, targetSpeed));
                 targetSpeed += UnityEngine.Random.Range(-0.18f, 0.18f);
 
                 var acceleration = Mathf.Max(0.1f, horse.Acceleration * aptitudeMultiplier
@@ -547,12 +852,32 @@ namespace Malatro
                 }
             }
 
-            PositionHorseVisuals();
+            ResolveOvertakeSkills();
 
             if (field.All(horse => horse.Finished))
             {
                 FinishRace();
             }
+        }
+
+        private void InitializeRaceLanes()
+        {
+            RaceMovementSystem.Initialize(field);
+        }
+
+        private void UpdateHorseLaneTargets(float deltaTime)
+        {
+            RaceMovementSystem.Update(field, currentRace, raceClock, deltaTime);
+        }
+
+        private float GetCornerLanePenalty(Horse horse)
+        {
+            return RaceMovementSystem.GetCornerLanePenalty(horse, currentRace);
+        }
+
+        private float GetTrafficSpeedLimit(Horse horse, float unrestrictedSpeed)
+        {
+            return RaceMovementSystem.GetTrafficSpeedLimit(horse, field, unrestrictedSpeed);
         }
 
         private float CastSkill(Horse horse)
@@ -567,13 +892,58 @@ namespace Malatro
                 return horse.Mana;
             }
 
-            return horse.Skill.Activate(horse, GetTrackLength(), field);
+            var remainingMana = horse.Skill.Activate(horse, GetTrackLength(), field);
+            if (horse.Skill.EffectType == HorseSkillEffectType.TimeStop)
+            {
+                BeginSkillCameraTracking(horse, horse.Skill.TimeStopDuration);
+            }
+
+            return remainingMana;
+        }
+
+        private void ResolveOvertakeSkills()
+        {
+            const float crossingEpsilon = 0.001f;
+
+            foreach (var horse in field)
+            {
+                if (horse.Finished
+                    || horse.Skill == null
+                    || horse.Skill.EffectType != HorseSkillEffectType.OvertakeTrip
+                    || horse.SkillCooldown > 0f
+                    || horse.Mana < GetManaCost(horse))
+                {
+                    continue;
+                }
+
+                foreach (var overtaker in field)
+                {
+                    if (overtaker == horse || overtaker.Finished)
+                    {
+                        continue;
+                    }
+
+                    var wasBehind = overtaker.PreviousDistance < horse.PreviousDistance - crossingEpsilon;
+                    var isNowAhead = overtaker.Distance > horse.Distance + crossingEpsilon;
+                    if (wasBehind && isNowAhead)
+                    {
+                        horse.Mana = horse.Skill.ActivateOnOvertaken(horse, overtaker);
+                        break;
+                    }
+                }
+            }
         }
 
         private void FinishRace()
         {
-            phase = GamePhase.Results;
-            resultDelay = 0.7f;
+            if (podiumTransitionPending)
+            {
+                return;
+            }
+
+            resultDelay = 0f;
+            podiumTransitionTimer = 1f;
+            podiumTransitionPending = true;
             latestStandings = field
                 .OrderBy(horse => horse.FinishTime)
                 .ThenByDescending(horse => horse.Distance)
@@ -748,7 +1118,7 @@ namespace Malatro
                 var horse = latestStandings[i];
                 var oldOdds = horse.WinOdds;
 
-                // 상위권 말은 다음 배당을 낮추고, 하위권 말은 위험도에 맞춰 배당을 높인다.
+                // ???ㅼ굣筌띻쐴踰?癲ル슢??씙? ???源낆쓱 ?袁⑸즲?????????㉱? ???쒓낮彛딃썒?癲ル슢??씙? ??ш낄援???ш끽維??癲ル슢?????袁⑸즲?????亦껋꼨援???
                 if (i == 0)
                 {
                     horse.WinOdds *= 0.78f;
@@ -774,7 +1144,7 @@ namespace Malatro
                 if (roundEarnedGold < roundTargetGold)
                 {
                     runComplete = true;
-                    phase = GamePhase.Betting;
+                    TransitionTo(GamePhase.Betting);
                     SetLog("round_failed", roundNumber, roundEarnedGold, roundTargetGold);
                     return;
                 }
@@ -792,8 +1162,9 @@ namespace Malatro
             raceNumber++;
             DriftStatsBetweenRaces();
             GenerateRaceData();
+            SelectRaceEntrants();
             GenerateTickets();
-            phase = GamePhase.Betting;
+            TransitionTo(GamePhase.Betting);
             if (raceNumber % RacesPerRound != 1)
             {
                 SetLog("next_race", GetRaceInRound());
@@ -817,7 +1188,7 @@ namespace Malatro
 
         private void DriftStatsBetweenRaces()
         {
-            foreach (var horse in field)
+            foreach (var horse in roster)
             {
                 var change = rng.Next(4);
                 if (change == 0)
@@ -841,28 +1212,150 @@ namespace Malatro
 
         private void NormalizeOpeningOdds()
         {
-            foreach (var horse in field)
+            foreach (var horse in roster)
             {
-                // 주요 능력치를 가중 합산한 평점을 배당으로 뒤집어 강한 말일수록 낮은 배당을 갖게 한다.
+                // ??낆뒩????潁??④낄??? ??좊읈?濚???獄쏅똾?????繹먮냱????袁⑸즲?????⑥?????源녿뾼????좊즴甕겹끃??癲ル슢??씙???嚥?흮 ??? ?袁⑸즲??????좊즴?怨꾨뼀???筌먲퐢??
                 var rating = horse.Speed * 0.38f + horse.Acceleration * 0.22f + horse.Stamina * 0.22f + horse.Magic * 0.08f;
                 var oddsRange = horse.Data != null ? horse.Data.OpeningOddsRange : new Vector2(1.6f, 9.8f);
                 horse.WinOdds = Mathf.Clamp(14f - rating + RollFloat(-0.65f, 0.65f), oddsRange.x, oddsRange.y);
             }
         }
 
-        private void UpdateRaceCamera(float deltaTime)
+        private void UpdateRaceCamera(float deltaTime, float realDeltaTime)
         {
+            UpdateSkillCameraTracking(deltaTime);
             var target = GetCameraTarget();
+            if (skillCameraTargetTimer <= 0f)
+            {
+                target = UpdateFinishedCameraTarget(target, realDeltaTime);
+            }
             var targetDistance = target != null ? target.Distance : 0f;
-            // 프레임률과 무관한 지수 보간으로 선두 또는 선택한 말을 부드럽게 추적한다.
+            // ??ш끽維???ш끽維??????뺣섕???癲ル슣?????怨뚮옖??????⑥?????ル늅?????獒????ャ뀕???癲ル슢??씙????딅텑???筌먦끉踰????⑤베毓???筌먲퐢??
             cameraDistance = Mathf.Lerp(cameraDistance, targetDistance, 1f - Mathf.Exp(-5f * deltaTime));
+            var targetViewDistance = IsFinalDuel()
+                ? FinalDuelCameraViewDistance
+                : CameraViewDistance;
+            raceCameraViewDistance = Mathf.Lerp(
+                raceCameraViewDistance,
+                targetViewDistance,
+                1f - Mathf.Exp(-2.8f * deltaTime));
+        }
+
+        private void BeginSkillCameraTracking(Horse caster, float duration)
+        {
+            if (caster == null || duration <= 0f)
+            {
+                return;
+            }
+
+            if (skillCameraTargetTimer <= 0f)
+            {
+                cameraTargetBeforeSkill = cameraTargetLane;
+            }
+
+            skillCameraTargetLane = caster.Lane;
+            skillCameraTargetTimer = duration;
+            finishedCameraTargetLane = -1;
+            finishedCameraTargetDelay = 0f;
+        }
+
+        private void UpdateSkillCameraTracking(float deltaTime)
+        {
+            if (skillCameraTargetTimer <= 0f)
+            {
+                return;
+            }
+
+            skillCameraTargetTimer = Mathf.Max(0f, skillCameraTargetTimer - deltaTime);
+            if (skillCameraTargetTimer > 0f)
+            {
+                return;
+            }
+
+            cameraTargetLane = cameraTargetBeforeSkill;
+            skillCameraTargetLane = -1;
+            cameraTargetBeforeSkill = -1;
+        }
+
+        private Horse UpdateFinishedCameraTarget(Horse target, float realDeltaTime)
+        {
+            if (target == null || !target.Finished)
+            {
+                finishedCameraTargetLane = -1;
+                finishedCameraTargetDelay = 0f;
+                return target;
+            }
+
+            var unfinishedLeader = field
+                .Where(horse => !horse.Finished)
+                .OrderByDescending(horse => horse.Distance)
+                .ThenByDescending(horse => horse.CurrentSpeed)
+                .ThenBy(horse => horse.Lane)
+                .FirstOrDefault();
+            if (unfinishedLeader == null)
+            {
+                return target;
+            }
+
+            if (finishedCameraTargetLane != target.Lane)
+            {
+                finishedCameraTargetLane = target.Lane;
+                finishedCameraTargetDelay = 1f;
+                cameraTargetLane = target.Lane;
+            }
+
+            finishedCameraTargetDelay = Mathf.Max(0f, finishedCameraTargetDelay - realDeltaTime);
+            if (finishedCameraTargetDelay > 0f)
+            {
+                return target;
+            }
+
+            cameraTargetLane = unfinishedLeader.Lane;
+            finishedCameraTargetLane = -1;
+            finishedCameraTargetDelay = 0f;
+            return unfinishedLeader;
+        }
+
+        private bool IsFinalDuel()
+        {
+            if (currentRace == null || field.Count < 2)
+            {
+                return false;
+            }
+
+            var leaders = field
+                .Where(horse => !horse.Finished)
+                .OrderByDescending(horse => horse.Distance)
+                .Take(2)
+                .ToList();
+            if (leaders.Count < 2)
+            {
+                return false;
+            }
+
+            var remainingMeters = (GetTrackLength() - leaders[0].Distance) * 8f;
+            var gapMeters = Mathf.Abs(leaders[0].Distance - leaders[1].Distance) * 8f;
+            return remainingMeters <= 200f && gapMeters <= 12f;
         }
 
         private Horse GetCameraTarget()
         {
-            if (cameraTargetLane >= 0 && cameraTargetLane < field.Count)
+            if (skillCameraTargetTimer > 0f && skillCameraTargetLane >= 0)
             {
-                return field[cameraTargetLane];
+                var caster = field.FirstOrDefault(horse => horse.Lane == skillCameraTargetLane);
+                if (caster != null)
+                {
+                    return caster;
+                }
+            }
+
+            if (cameraTargetLane >= 0)
+            {
+                var selected = field.FirstOrDefault(horse => horse.Lane == cameraTargetLane);
+                if (selected != null)
+                {
+                    return selected;
+                }
             }
 
             return field
@@ -873,653 +1366,93 @@ namespace Malatro
 
         private void CycleCameraTarget(int direction)
         {
-            cameraTargetLane += direction;
-            if (cameraTargetLane < -1)
+            if (skillCameraTargetTimer > 0f)
             {
-                cameraTargetLane = field.Count - 1;
+                return;
             }
-            else if (cameraTargetLane >= field.Count)
+
+            finishedCameraTargetLane = -1;
+            finishedCameraTargetDelay = 0f;
+            if (field.Count == 0)
             {
                 cameraTargetLane = -1;
+                return;
             }
+
+            var ordered = field.OrderBy(horse => horse.Lane).ToList();
+            var currentIndex = cameraTargetLane < 0
+                ? 0
+                : ordered.FindIndex(horse => horse.Lane == cameraTargetLane) + 1;
+            var optionCount = ordered.Count + 1;
+            var nextIndex = (currentIndex + direction) % optionCount;
+            if (nextIndex < 0)
+            {
+                nextIndex += optionCount;
+            }
+
+            cameraTargetLane = nextIndex == 0 ? -1 : ordered[nextIndex - 1].Lane;
         }
 
         private void ToggleLanguage()
         {
             language = language == UiLanguage.Korean ? UiLanguage.English : UiLanguage.Korean;
-        }
-
-        private void DrawTrack()
-        {
-            var trackRect = new Rect(32f, 142f, Screen.width - 64f, 306f);
-            var trackColor = currentRace != null && currentRace.Surface == TrackSurface.Dirt
-                ? new Color(0.24f, 0.16f, 0.1f, 0.98f)
-                : new Color(0.12f, 0.2f, 0.12f, 0.98f);
-            DrawRect(trackRect, trackColor);
-            GUI.Box(trackRect, GUIContent.none, cardStyle);
-
-            var infoWidth = Mathf.Clamp(trackRect.width * 0.24f, 245f, 360f);
-            var raceViewport = new Rect(trackRect.x + infoWidth, trackRect.y + 8f, trackRect.width - infoWidth - 8f, trackRect.height - 16f);
-            DrawRect(new Rect(trackRect.x + infoWidth - 2f, trackRect.y + 8f, 2f, trackRect.height - 16f), new Color(0.42f, 0.49f, 0.42f, 0.55f));
-
-            for (var i = 0; i < FieldSize; i++)
-            {
-                var horse = field[i];
-                var y = trackRect.y + 18f + i * 46f;
-                var isTracked = GetCameraTarget() == horse;
-                if (isTracked)
-                {
-                    DrawRect(new Rect(trackRect.x + 8f, y - 5f, infoWidth - 18f, 42f), new Color(0.2f, 0.29f, 0.23f, 0.95f));
-                }
-
-                DrawRect(new Rect(raceViewport.x, y + 31f, raceViewport.width, 2f), new Color(0.48f, 0.56f, 0.48f, 0.38f));
-                GUI.Label(new Rect(trackRect.x + 16f, y, infoWidth - 105f, 20f), GetHorseName(horse), bodyStyle);
-                GUI.Label(new Rect(trackRect.x + infoWidth - 92f, y, 70f, 20f), $"{horse.WinOdds:0.0}x", smallStyle);
-                var manaCost = GetManaCost(horse);
-                DrawManaBar(
-                    new Rect(trackRect.x + 16f, y + 25f, infoWidth - 122f, 7f),
-                    horse.Mana,
-                    manaCost);
-                GUI.Label(
-                    new Rect(trackRect.x + infoWidth - 101f, y + 17f, 80f, 20f),
-                    $"{horse.Mana:0}/{manaCost:0}",
-                    centeredStyle);
-            }
-
-            DrawHorseCharacters(raceViewport);
-            PositionHorseVisuals();
-        }
-
-        private void DrawHorseCharacters(Rect viewport)
-        {
-            GUI.BeginGroup(viewport);
-            var pixelsPerDistance = viewport.width / CameraViewDistance;
-            var centerX = viewport.width * 0.48f;
-            var finishX = centerX + (GetTrackLength() - cameraDistance) * pixelsPerDistance;
-            if (finishX > -10f && finishX < viewport.width + 10f)
-            {
-                DrawRect(new Rect(finishX, 0f, 4f, viewport.height), new Color(1f, 0.87f, 0.38f, 0.95f));
-                GUI.Label(new Rect(finishX - 34f, 4f, 70f, 22f), L("finish"), centeredStyle);
-            }
-
-            foreach (var horse in field)
-            {
-                if (horse.RunSheet == null)
-                {
-                    continue;
-                }
-
-                var x = centerX + (horse.Distance - cameraDistance) * pixelsPerDistance;
-                var y = -5f + horse.Lane * 46f;
-                var frameRect = new Rect(horse.AnimationFrame * 0.5f, 0f, 0.5f, 1f);
-                var baseRect = new Rect(x - 36f, y, 72f, 92f);
-                var effect = horse.SkillEffectAmount;
-                if (horse.TimeStopTimer > 0f)
-                {
-                    var stopPulse = 0.22f + Mathf.PingPong(Time.time * 2f, 0.18f);
-                    DrawRect(
-                        ScaleRect(baseRect, 1.16f),
-                        new Color(0.42f, 0.28f, 1f, stopPulse));
-                    GUI.Label(
-                        new Rect(baseRect.x - 28f, baseRect.y - 15f, baseRect.width + 56f, 20f),
-                        $"{L("time_stopped")} {horse.TimeStopTimer:0.0}s",
-                        centeredStyle);
-                }
-                if (horse.StunTimer > 0f)
-                {
-                    var stunPulse = 0.35f + Mathf.PingPong(Time.time * 5f, 0.45f);
-                    DrawRect(
-                        ScaleRect(baseRect, 1.12f),
-                        new Color(1f, 0.78f, 0.12f, stunPulse));
-                    GUI.Label(
-                        new Rect(baseRect.x - 20f, baseRect.y - 15f, baseRect.width + 40f, 20f),
-                        $"{L("stunned")} {horse.StunTimer:0.0}s",
-                        centeredStyle);
-                }
-                if (effect > 0f)
-                {
-                    var effectColor = GetSkillEffectColor(horse.Skill);
-                    var pulse = 1f + Mathf.Sin(Time.time * 22f) * 0.06f * effect;
-                    var glowRect = ScaleRect(baseRect, 1.18f + effect * 0.12f);
-                    DrawRect(glowRect, new Color(effectColor.r, effectColor.g, effectColor.b, 0.16f * effect));
-
-                    for (var trail = 1; trail <= 2; trail++)
-                    {
-                        var trailRect = baseRect;
-                        trailRect.x -= trail * (10f + horse.CurrentSpeed * 0.5f);
-                        DrawTintedSprite(
-                            trailRect,
-                            horse.RunSheet,
-                            frameRect,
-                            new Color(effectColor.r, effectColor.g, effectColor.b, effect * (0.22f / trail)));
-                    }
-
-                    baseRect = ScaleRect(baseRect, pulse);
-                    GUI.Label(
-                        new Rect(baseRect.x - 30f, baseRect.y - 15f, baseRect.width + 60f, 22f),
-                        GetSkillName(horse.Skill),
-                        centeredStyle);
-                }
-
-                GUI.DrawTextureWithTexCoords(baseRect, horse.RunSheet, frameRect, true);
-                if (horse.TimeStopTimer > 0f)
-                {
-                    DrawTintedSprite(
-                        baseRect,
-                        horse.RunSheet,
-                        frameRect,
-                        new Color(0.48f, 0.34f, 1f, 0.38f));
-                }
-            }
-
-            GUI.EndGroup();
+            MarkUiDirty();
         }
 
         private void PositionHorseVisuals()
         {
-            if (mainCamera == null)
+            if (raceWorldView == null)
             {
                 return;
             }
 
-            foreach (var horse in field)
-            {
-                if (horse.Visual == null)
-                {
-                    continue;
-                }
-
-                var x = Mathf.Lerp(-7.0f, 6.8f, horse.Distance / GetTrackLength());
-                var y = 3.05f - horse.Lane * 0.72f;
-                horse.Visual.transform.position = new Vector3(x, y, 0f);
-            }
+            UpdateRaceWorldPresentation();
         }
 
-        private void DrawTopPanel()
+        private void UpdateRaceWorldPresentation()
         {
-            DrawRect(new Rect(0f, 0f, Screen.width, 132f), new Color(0.07f, 0.08f, 0.085f, 0.99f));
-            GUI.Label(new Rect(22f, 10f, 470f, 34f), L("game_title"), titleStyle);
-            GUI.Label(new Rect(22f, 48f, 230f, 28f), $"{L("gold")}  {gold:N0}", navStyle);
-            GUI.Label(
-                new Rect(264f, 48f, 520f, 26f),
-                $"{L("round")} {roundNumber}  |  {L("race")} {GetRaceInRound()}/{RacesPerRound}  |  {L("round_goal")} {roundEarnedGold:N0}/{roundTargetGold:N0}",
-                bodyStyle);
-            if (currentRace != null)
-            {
-                GUI.Label(
-                    new Rect(800f, 46f, Screen.width - 990f, 42f),
-                    $"{currentRace.GetName(language == UiLanguage.Korean)}  |  {currentRace.League}\n{currentRace.GetSurfaceName(language == UiLanguage.Korean)}  |  {currentRace.TotalDistanceMeters}m",
-                    bodyStyle);
-            }
-
-            if (GUI.Button(new Rect(Screen.width - 170f, 12f, 142f, 32f), language == UiLanguage.Korean ? "한국어 | EN" : "English | KR", buttonStyle))
-            {
-                ToggleLanguage();
-            }
-
-            GUI.Label(new Rect(22f, 90f, 124f, 24f), L("camera"), smallStyle);
-            var autoSelected = cameraTargetLane == -1;
-            if (GUI.Button(new Rect(116f, 84f, 92f, 32f), autoSelected ? $"[*] {L("leader")}" : L("leader"), buttonStyle))
-            {
-                cameraTargetLane = -1;
-            }
-
-            var availableWidth = Screen.width - 236f;
-            var buttonWidth = Mathf.Clamp(availableWidth / FieldSize - 8f, 92f, 170f);
-            for (var i = 0; i < field.Count; i++)
-            {
-                var horse = field[i];
-                var x = 220f + i * (buttonWidth + 6f);
-                if (x + buttonWidth > Screen.width - 20f)
-                {
-                    break;
-                }
-
-                var selected = cameraTargetLane == i;
-                if (GUI.Button(new Rect(x, 82f, buttonWidth, 36f), selected ? $"[*] {GetShortHorseName(horse)}" : GetShortHorseName(horse), buttonStyle))
-                {
-                    cameraTargetLane = i;
-                }
-            }
-
-            DrawProgressNavigation();
-        }
-
-        private void DrawProgressNavigation()
-        {
-            if (field.Count == 0)
+            if (raceWorldView == null || field.Count == 0)
             {
                 return;
             }
 
-            const float iconWidth = 26f;
-            const float iconHeight = 34f;
-            const float minimumIconSpacing = 24f;
-            var startX = 500f;
-            var endX = Screen.width - 205f;
-            var width = Mathf.Max(180f, endX - startX);
-            var lineY = 58f;
-            var leaderProgress = field.Max(horse => Mathf.Clamp01(horse.Distance / GetTrackLength()));
-
-            GUI.Label(new Rect(startX - 42f, lineY - 8f, 38f, 20f), "0%", smallStyle);
-            GUI.Label(new Rect(startX + width + 5f, lineY - 8f, 46f, 20f), "100%", smallStyle);
-            DrawRect(new Rect(startX, lineY, width, 6f), new Color(0.15f, 0.17f, 0.17f, 1f));
-            DrawRect(new Rect(startX, lineY, width * leaderProgress, 6f), new Color(0.78f, 0.61f, 0.22f, 0.9f));
-            DrawRect(new Rect(startX, lineY - 4f, 2f, 14f), new Color(0.82f, 0.86f, 0.82f, 0.8f));
-            DrawRect(new Rect(startX + width - 2f, lineY - 5f, 3f, 16f), new Color(1f, 0.86f, 0.36f, 1f));
-
-            var leader = field
-                .OrderByDescending(horse => horse.Distance)
-                .ThenBy(horse => horse.Lane)
-                .First();
-            var tracked = GetCameraTarget();
-
-            var orderedHorses = field
-                .OrderBy(horse => horse.Distance)
-                .ThenBy(horse => horse.Lane)
-                .ToList();
-            var iconCenters = orderedHorses
-                .Select(horse => startX + width * Mathf.Clamp01(horse.Distance / GetTrackLength()))
-                .ToArray();
-
-            for (var i = 1; i < iconCenters.Length; i++)
-            {
-                iconCenters[i] = Mathf.Max(iconCenters[i], iconCenters[i - 1] + minimumIconSpacing);
-            }
-
-            var overflow = iconCenters[iconCenters.Length - 1] - (startX + width);
-            if (overflow > 0f)
-            {
-                for (var i = 0; i < iconCenters.Length; i++)
-                {
-                    iconCenters[i] -= overflow;
-                }
-            }
-
-            if (iconCenters[0] < startX)
-            {
-                var correction = startX - iconCenters[0];
-                for (var i = 0; i < iconCenters.Length; i++)
-                {
-                    iconCenters[i] += correction;
-                }
-            }
-
-            for (var i = 0; i < orderedHorses.Count; i++)
-            {
-                var horse = orderedHorses[i];
-                var progress = Mathf.Clamp01(horse.Distance / GetTrackLength());
-                var actualX = startX + width * progress;
-                var iconX = iconCenters[i];
-                var connectorStart = Mathf.Min(actualX, iconX);
-                var connectorWidth = Mathf.Abs(actualX - iconX);
-                if (connectorWidth > 1f)
-                {
-                    DrawRect(new Rect(connectorStart, lineY - 1f, connectorWidth, 2f), new Color(horse.Color.r, horse.Color.g, horse.Color.b, 0.55f));
-                }
-
-                var iconRect = new Rect(iconX - iconWidth * 0.5f, lineY - 32f, iconWidth, iconHeight);
-                var effect = horse.SkillEffectAmount;
-                if (effect > 0f)
-                {
-                    var effectColor = GetSkillEffectColor(horse.Skill);
-                    var pulse = 1.1f + Mathf.Sin(Time.time * 24f) * 0.1f;
-                    var auraRect = ScaleRect(iconRect, 1.45f);
-                    DrawRect(auraRect, new Color(effectColor.r, effectColor.g, effectColor.b, 0.45f * effect));
-                    iconRect = ScaleRect(iconRect, pulse);
-                }
-
-                if (horse.StunTimer > 0f)
-                {
-                    DrawRect(
-                        new Rect(iconRect.x - 3f, iconRect.y - 3f, iconRect.width + 6f, iconRect.height + 6f),
-                        new Color(1f, 0.78f, 0.12f, 0.95f));
-                }
-                if (horse.TimeStopTimer > 0f)
-                {
-                    DrawRect(
-                        new Rect(iconRect.x - 4f, iconRect.y - 4f, iconRect.width + 8f, iconRect.height + 8f),
-                        new Color(0.48f, 0.34f, 1f, 0.95f));
-                }
-
-                if (horse == tracked)
-                {
-                    DrawRect(new Rect(iconRect.x - 3f, iconRect.y - 3f, iconRect.width + 6f, iconRect.height + 6f), new Color(1f, 0.84f, 0.28f, 1f));
-                }
-                else if (horse == leader)
-                {
-                    DrawRect(new Rect(iconRect.x - 2f, iconRect.y - 2f, iconRect.width + 4f, iconRect.height + 4f), new Color(0.92f, 0.94f, 0.9f, 0.9f));
-                }
-
-                DrawRect(iconRect, new Color(horse.Color.r * 0.32f, horse.Color.g * 0.32f, horse.Color.b * 0.32f, 0.96f));
-                if (horse.RunSheet != null)
-                {
-                    GUI.DrawTextureWithTexCoords(iconRect, horse.RunSheet, new Rect(0f, 0f, 0.5f, 1f), true);
-                }
-
-                if (effect > 0f)
-                {
-                    var effectColor = GetSkillEffectColor(horse.Skill);
-                    DrawRect(
-                        new Rect(iconRect.x, iconRect.y + iconRect.height - 3f, iconRect.width * effect, 3f),
-                        new Color(effectColor.r, effectColor.g, effectColor.b, 1f));
-                }
-
-                GUI.Label(
-                    new Rect(iconRect.x - 9f, lineY + 7f, iconRect.width + 18f, 18f),
-                    $"{progress:P0}",
-                    centeredStyle);
-            }
-        }
-
-        private void DrawBettingPanel()
-        {
-            var panel = GetLowerPanel();
-            DrawRect(panel, new Color(0.09f, 0.105f, 0.11f, 0.98f));
-
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 14f, 500f, 28f), runComplete ? L("run_failed_title") : L("ticket_board"), titleStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 48f, panel.width - 48f, 26f), GetLog(), bodyStyle);
-
-            var tableY = panel.y + 82f;
-            for (var i = 0; i < field.Count; i++)
-            {
-                var horse = field[i];
-                var x = panel.x + 24f + i % 3 * 245f;
-                var y = tableY + i / 3 * 74f;
-                GUI.Label(new Rect(x, y, 235f, 20f), $"{GetHorseName(horse)}  {horse.WinOdds:0.0}x", bodyStyle);
-                GUI.Label(new Rect(x, y + 22f, 235f, 38f), StatLine(horse), smallStyle);
-            }
-
-            if (!runComplete)
-            {
-                DrawTickets(panel);
-                DrawRelicShop(panel);
-            }
-
-            GUI.enabled = !runComplete;
-            if (GUI.Button(new Rect(panel.x + panel.width - 220f, panel.y + 30f, 180f, 42f), L("start_race"), buttonStyle))
-            {
-                StartRace();
-            }
-
-            GUI.enabled = true;
-            if (GUI.Button(new Rect(panel.x + panel.width - 220f, panel.y + 84f, 180f, 34f), L("new_run"), buttonStyle))
-            {
-                StartNewRun();
-            }
-        }
-
-        private void DrawTickets(Rect panel)
-        {
-            var ticketY = panel.y + 228f;
-            var gap = 12f;
-            var cardWidth = Mathf.Min(285f, (panel.width - 48f - gap * (offeredTickets.Count - 1)) / offeredTickets.Count);
-            for (var i = 0; i < offeredTickets.Count; i++)
-            {
-                var ticket = offeredTickets[i];
-                var rect = new Rect(panel.x + 24f + i * (cardWidth + gap), ticketY, cardWidth, 122f);
-                DrawRect(rect, new Color(0.19f, 0.22f, 0.19f, 1f));
-                GUI.Box(rect, GUIContent.none, cardStyle);
-
-                if (GUI.Button(new Rect(rect.x + 12f, rect.y + 10f, rect.width - 24f, 30f), $"{i + 1}. {ticket.GetTypeName(language == UiLanguage.Korean)}", buttonStyle))
-                {
-                    CycleTicketType(ticket);
-                }
-
-                var targetWidth = ticket.NeedsSecondHorse ? (rect.width - 32f) * 0.5f : rect.width - 24f;
-                if (GUI.Button(new Rect(rect.x + 12f, rect.y + 46f, targetWidth, 30f), GetShortHorseName(ticket.First), buttonStyle))
-                {
-                    CycleTicketHorse(ticket, false);
-                }
-
-                if (ticket.NeedsSecondHorse && GUI.Button(new Rect(rect.x + 20f + targetWidth, rect.y + 46f, targetWidth, 30f), GetShortHorseName(ticket.Second), buttonStyle))
-                {
-                    CycleTicketHorse(ticket, true);
-                }
-
-                GUI.Label(new Rect(rect.x + 12f, rect.y + 80f, rect.width - 24f, 22f), $"{ticket.Odds:0.0}x  |  {L("payout")} {GetRelicAdjustedPayout(ticket)}", centeredStyle);
-            }
-
-            GUI.Label(
-                new Rect(panel.x + panel.width - 220f, panel.y + 132f, 180f, 44f),
-                $"{L("all_tickets")}  {offeredTickets.Count}\n{L("race_entry_free")}",
-                centeredStyle);
-        }
-
-        private void DrawRelicShop(Rect panel)
-        {
-            var shopY = panel.y + 364f;
-            GUI.Label(
-                new Rect(panel.x + 24f, shopY, panel.width - 230f, 24f),
-                L("relic_shop"),
-                bodyStyle);
-            if (GUI.Button(
-                    new Rect(panel.x + panel.width - 196f, shopY - 3f, 172f, 27f),
-                    $"{L("refresh_shop")} {relicShopRefreshCost}",
-                    buttonStyle))
-            {
-                RefreshRelicShop();
-            }
-
-            var gap = 10f;
-            var cardWidth = (panel.width - 48f - gap * (RelicShopOfferCount - 1)) / RelicShopOfferCount;
-            var cardY = shopY + 28f;
-            for (var i = 0; i < relicShopOffers.Count; i++)
-            {
-                var relic = relicShopOffers[i];
-                var owned = relicInventory.Contains(relic);
-                var rect = new Rect(
-                    panel.x + 24f + i * (cardWidth + gap),
-                    cardY,
-                    cardWidth,
-                    86f);
-                var tint = relic.Color;
-                DrawRect(rect, new Color(tint.r * 0.25f, tint.g * 0.25f, tint.b * 0.25f, 1f));
-                GUI.Box(rect, GUIContent.none, cardStyle);
-
-                GUI.Label(
-                    new Rect(rect.x + 8f, rect.y + 6f, rect.width - 16f, 20f),
-                    $"{relic.GetName(language == UiLanguage.Korean)}  [{GetRarityName(relic.Rarity)}]",
-                    centeredStyle);
-                GUI.Label(
-                    new Rect(rect.x + 8f, rect.y + 27f, rect.width - 16f, 30f),
-                    relic.GetDescription(language == UiLanguage.Korean),
-                    smallStyle);
-
-                var buttonLabel = owned ? L("owned") : $"{L("buy")} {relic.Price}";
-                GUI.enabled = !owned;
-                if (GUI.Button(new Rect(rect.x + 8f, rect.y + 58f, rect.width - 16f, 23f), buttonLabel, buttonStyle))
-                {
-                    BuyRelic(relic);
-                }
-                GUI.enabled = true;
-            }
-
-            DrawRelicInventory(panel, shopY + 120f);
-        }
-
-        private void DrawRelicInventory(Rect panel, float inventoryY)
-        {
-            GUI.Label(
-                new Rect(panel.x + 24f, inventoryY, panel.width - 48f, 22f),
-                $"{L("relic_inventory")} {relicInventory.Count}/{RelicInventory.MaximumCapacity}",
-                bodyStyle);
-
-            const int columns = RelicInventory.MaximumCapacity;
-            var gap = 10f;
-            var slotWidth = (panel.width - 48f - gap * (columns - 1)) / columns;
-            for (var i = 0; i < columns; i++)
-            {
-                var rect = new Rect(
-                    panel.x + 24f + i * (slotWidth + gap),
-                    inventoryY + 24f,
-                    slotWidth,
-                    34f);
-                if (i >= relicInventory.Count)
-                {
-                    GUI.Box(rect, L("empty_relic_slot"), cardStyle);
-                    continue;
-                }
-
-                var relic = relicInventory.Relics[i];
-                var label = $"{relic.GetName(language == UiLanguage.Korean)}  |  {L("sell")} +{relic.SellPrice}";
-                if (GUI.Button(rect, label, buttonStyle))
-                {
-                    SellRelic(relic);
-                }
-            }
-        }
-
-        private void BuyRelic(RelicData relic)
-        {
-            if (relic == null || relicInventory.Contains(relic))
+            var visible = phase == GamePhase.Racing || phase == GamePhase.Results;
+            raceWorldView.SetVisible(visible, field);
+            if (!visible)
             {
                 return;
             }
 
-            if (relicInventory.IsFull)
+            if (phase == GamePhase.Results)
             {
-                SetLog("relic_full");
+                raceWorldView.ShowPodium(latestStandings);
                 return;
             }
 
-            if (gold < relic.Price)
-            {
-                SetLog("relic_need_gold", relic.Price);
-                return;
-            }
-
-            gold -= relic.Price;
-            relicInventory.Add(relic);
-            EnsureTicketCount();
-            SetLog("relic_bought", relic.GetName(language == UiLanguage.Korean));
-        }
-
-        private void SellRelic(RelicData relic)
-        {
-            if (!relicInventory.Remove(relic))
-            {
-                return;
-            }
-
-            gold += relic.SellPrice;
-            EnsureTicketCount();
-            SetLog("relic_sold", relic.GetName(language == UiLanguage.Korean), relic.SellPrice);
-        }
-
-        private string GetRarityName(RelicRarity rarity)
-        {
-            return rarity switch
-            {
-                RelicRarity.Common => L("rarity_common"),
-                RelicRarity.Rare => L("rarity_rare"),
-                RelicRarity.Epic => L("rarity_epic"),
-                RelicRarity.Legendary => L("rarity_legendary"),
-                _ => rarity.ToString()
-            };
-        }
-
-        private void CycleTicketType(BetTicket ticket)
-        {
-            var values = (BetType[])Enum.GetValues(typeof(BetType));
-            var index = (Array.IndexOf(values, ticket.Type) + 1) % values.Length;
-            ticket.SetType(values[index]);
-            if (ticket.NeedsSecondHorse && ticket.Second == null)
-            {
-                ticket.SetSecond(field.First(horse => horse != ticket.First));
-            }
-            SetLog("customize_all");
-        }
-
-        private void CycleTicketHorse(BetTicket ticket, bool secondTarget)
-        {
-            var current = secondTarget ? ticket.Second : ticket.First;
-            var index = current != null ? field.IndexOf(current) : -1;
-            for (var attempts = 0; attempts < field.Count; attempts++)
-            {
-                index = (index + 1) % field.Count;
-                var candidate = field[index];
-                if (secondTarget && candidate == ticket.First)
-                {
-                    continue;
-                }
-
-                if (!secondTarget && ticket.NeedsSecondHorse && candidate == ticket.Second)
-                {
-                    continue;
-                }
-
-                if (secondTarget)
-                {
-                    ticket.SetSecond(candidate);
-                }
-                else
-                {
-                    ticket.SetFirst(candidate);
-                }
-
-                break;
-            }
-            SetLog("customize_all");
-        }
-
-        private void DrawRacePanel()
-        {
-            var panel = new Rect(32f, 464f, Screen.width - 64f, 132f);
-            DrawRect(panel, new Color(0.09f, 0.105f, 0.11f, 0.98f));
             var target = GetCameraTarget();
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 16f, 420f, 28f), $"{L("race_clock")}: {raceClock:0.0}s", titleStyle);
-            GUI.Label(new Rect(panel.x + 360f, panel.y + 18f, panel.width - 650f, 26f), $"{L("following")}: {(cameraTargetLane == -1 ? L("leader") : GetHorseName(target))}  (Q / E)", bodyStyle);
-            DrawRaceSpeedControls(panel);
-            var ticketSummary = string.Join("   |   ", offeredTickets.Select((ticket, index) =>
-                $"{index + 1}. {ticket.GetLabel(language == UiLanguage.Korean, GetHorseName)}"));
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 50f, panel.width - 48f, 42f), ticketSummary, smallStyle);
-
-            var messages = field
-                .Where(horse => !string.IsNullOrEmpty(horse.SkillMessage))
-                .Select(horse => $"{GetHorseName(horse)}: {GetSkillName(horse.Skill)}");
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 82f, panel.width - 48f, 24f), string.Join("   ", messages), smallStyle);
+            var focusDistance = target != null
+                ? target.Distance
+                : field.Max(horse => horse.Distance);
+            raceWorldView.UpdateView(
+                field,
+                focusDistance,
+                raceCameraViewDistance,
+                GetTrackLength(),
+                GetCurrentCourseBend(),
+                raceClock);
         }
 
-        private void DrawRaceSpeedControls(Rect panel)
+        private string GetBetTypeName(BetType type)
         {
-            var startX = panel.x + panel.width - 272f;
-            GUI.Label(new Rect(startX - 58f, panel.y + 18f, 54f, 24f), L("speed_control"), smallStyle);
-
-            var speeds = new[] { 1f, 1.5f, 2f };
-            for (var i = 0; i < speeds.Length; i++)
+            var korean = language == UiLanguage.Korean;
+            return type switch
             {
-                var speed = speeds[i];
-                var selected = Mathf.Approximately(racePlaybackSpeed, speed);
-                var label = selected ? $"[*] {speed:0.#}x" : $"{speed:0.#}x";
-                if (GUI.Button(new Rect(startX + i * 82f, panel.y + 12f, 76f, 32f), label, buttonStyle))
-                {
-                    racePlaybackSpeed = speed;
-                }
-            }
-        }
-
-        private void DrawResultsPanel()
-        {
-            var panel = GetLowerPanel();
-            DrawRect(panel, new Color(0.09f, 0.105f, 0.11f, 0.98f));
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, 280f, 28f), L("results"), titleStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 54f, panel.width - 48f, 28f), GetLog(), bodyStyle);
-
-            for (var i = 0; i < latestStandings.Count; i++)
-            {
-                var horse = latestStandings[i];
-                var delta = horse.LastOddsDelta >= 0f ? $"+{horse.LastOddsDelta:0.0}" : $"{horse.LastOddsDelta:0.0}";
-                GUI.Label(new Rect(panel.x + 24f, panel.y + 92f + i * 25f, 720f, 24f), $"{i + 1}. {GetHorseName(horse)} - {horse.FinishTime:0.00}s   {L("odds")} {horse.WinOdds:0.0}x ({delta})", bodyStyle);
-            }
-
-            var resultButtonLabel = raceNumber % RacesPerRound == 0
-                ? L("check_round_button")
-                : L("next_race_button");
-            if (resultDelay <= 0f && GUI.Button(new Rect(panel.x + panel.width - 230f, panel.y + 30f, 190f, 42f), resultButtonLabel, buttonStyle))
-            {
-                PrepareNextRace();
-            }
+                BetType.Win => korean ? "\uB2E8\uC2B9\uC2DD" : "Win",
+                BetType.Place => korean ? "\uC5F0\uC2B9\uC2DD" : "Place",
+                BetType.Quinella => korean ? "\uBCF5\uC2B9\uC2DD" : "Quinella",
+                BetType.Exacta => korean ? "\uC30D\uC2B9\uC2DD" : "Exacta",
+                _ => type.ToString()
+            };
         }
 
         private string StatLine(Horse horse)
@@ -1537,6 +1470,11 @@ namespace Malatro
 
         private Rect GetLowerPanel()
         {
+            if (phase == GamePhase.Betting || phase == GamePhase.Shop)
+            {
+                return new Rect(32f, 148f, Screen.width - 64f, Mathf.Max(360f, Screen.height - 170f));
+            }
+
             return new Rect(32f, 464f, Screen.width - 64f, Mathf.Max(180f, Screen.height - 486f));
         }
 
@@ -1562,94 +1500,6 @@ namespace Malatro
         private string GetSkillName(HorseSkillData skill)
         {
             return skill != null ? skill.GetName(language == UiLanguage.Korean) : L("skill");
-        }
-
-        private void SetLog(string key, params object[] args)
-        {
-            logKey = key;
-            logArgs = args ?? Array.Empty<object>();
-        }
-
-        private string GetLog()
-        {
-            return string.Format(L(logKey), logArgs);
-        }
-
-        private string L(string key)
-        {
-            var korean = language == UiLanguage.Korean;
-            switch (key)
-            {
-                case "game_title": return korean ? "말라트로: 승부 예측 경마" : "Malatro: Prediction Horse Racing";
-                case "gold": return korean ? "골드" : "Gold";
-                case "race": return korean ? "레이스" : "Race";
-                case "round": return korean ? "라운드" : "Round";
-                case "round_goal": return korean ? "목표" : "Goal";
-                case "camera": return korean ? "카메라" : "Camera";
-                case "leader": return korean ? "선두 자동" : "Auto Leader";
-                case "finish": return korean ? "결승" : "FINISH";
-                case "ticket_board": return korean ? "마권 선택" : "Ticket Board";
-                case "meet_complete_title": return korean ? "시즌 종료" : "Meet Complete";
-                case "start_race": return korean ? "레이스 시작 (Space)" : "Start Race (Space)";
-                case "new_run": return korean ? "새 게임" : "New Run";
-                case "stake": return korean ? "베팅" : "Stake";
-                case "payout": return korean ? "예상 지급" : "Payout";
-                case "all_tickets": return korean ? "전체 마권 적용" : "All Tickets Active";
-                case "total_cost": return korean ? "총 비용" : "Total Cost";
-                case "selected": return korean ? "선택됨" : "Selected";
-                case "select": return korean ? "선택" : "Select";
-                case "race_clock": return korean ? "경기 시간" : "Race clock";
-                case "speed_control": return korean ? "배속" : "Speed";
-                case "following": return korean ? "추적 중" : "Following";
-                case "results": return korean ? "경기 결과" : "Results";
-                case "odds": return korean ? "배당" : "odds";
-                case "next_race_button": return korean ? "다음 레이스 (Space)" : "Next Race (Space)";
-                case "check_round_button": return korean ? "라운드 결과 확인 (Space)" : "Check Round (Space)";
-                case "speed_short": return korean ? "속도" : "SPD";
-                case "accel_short": return korean ? "가속" : "ACC";
-                case "stamina_short": return korean ? "지구력" : "STA";
-                case "magic_short": return korean ? "마력" : "MAG";
-                case "aptitude_short": return korean ? "적성" : "APT";
-                case "skill": return korean ? "스킬" : "Skill";
-                case "stunned": return korean ? "기절" : "STUN";
-                case "time_stopped": return korean ? "시간 정지" : "TIME STOP";
-                case "choose_ticket": return korean ? "세 장의 마권 중 하나를 선택하세요." : "Choose one of three tickets, then read the race.";
-                case "pick_ticket": return korean ? "세 장의 마권을 커스텀하고 Space로 출발하세요. 세 장 모두 적용됩니다." : "Customize all three tickets. Every ticket is active when the race starts.";
-                case "customize_all": return korean ? "마권 종류와 대상 말을 조정하세요. 세 장 모두 자동 적용됩니다." : "Customize the type and horses. All three tickets are automatically active.";
-                case "ticket_selected": return korean ? "{0} 선택. Space로 레이스를 시작하세요." : "Selected {0}. Press Space to race.";
-                case "season_complete": return korean ? "시즌이 끝났습니다. 새 게임을 시작하세요." : "Season complete. Start a new run.";
-                case "pick_first": return korean ? "먼저 1, 2, 3번 마권 중 하나를 선택하세요." : "Pick a ticket first: 1, 2, or 3.";
-                case "need_gold_all": return korean ? "세 장의 마권을 적용하려면 골드 {0}이 필요합니다." : "You need {0} gold to activate all three tickets.";
-                case "race_started": return korean ? "{0}라운드 {1}경기 시작. 마권 {2}장이 모두 적용됩니다." : "Round {0}, race {1}: all {2} tickets are active.";
-                case "all_ticket_result": return korean ? "마권 {0}/{1}장 적중, 총 골드 {2} 획득." : "{0}/{1} tickets hit. Total payout: {2} gold.";
-                case "ticket_hit": return korean ? "적중! {0} / 골드 {1} 획득." : "Hit! {0} paid {1} gold.";
-                case "ticket_miss": return korean ? "미적중: {0}" : "Missed {0}. The track keeps the stake.";
-                case "meet_complete": return korean ? "시즌 종료. 마권 적중 {0}/{1}, 최종 골드 {2}." : "Meet complete. Ticket hits {0}/{1}, final gold {2}.";
-                case "next_race": return korean ? "{0}경주: 이전 결과에 따라 배당이 변동했습니다." : "Race {0}: odds moved after the last result.";
-                case "race_entry_free": return korean ? "레이스 참가비 무료" : "Free race entry";
-                case "race_data_missing": return korean ? "{0} 리그 경기 데이터가 DB에 없습니다." : "No {0} race is registered in the database.";
-                case "round_cleared": return korean ? "{0}라운드 통과! {1}골드를 획득했습니다. 다음 목표는 {2}골드입니다." : "Round {0} cleared with {1} gold. The next goal is {2} gold.";
-                case "round_failed": return korean ? "{0}라운드 실패. 획득 골드 {1}/{2}. 새로운 런을 시작하세요." : "Round {0} failed. Earned {1}/{2} gold. Start a new run.";
-                case "run_failed_title": return korean ? "라운드 실패" : "Round Failed";
-                case "relic_shop": return korean ? "유물 상점" : "Relic Shop";
-                case "relic_inventory": return korean ? "보유" : "Owned";
-                case "refresh_shop": return korean ? "새로고침" : "Refresh";
-                case "owned": return korean ? "보유 중" : "Owned";
-                case "empty_relic_slot": return korean ? "빈 유물 칸" : "Empty relic slot";
-                case "buy": return korean ? "구매" : "Buy";
-                case "sell": return korean ? "판매" : "Sell";
-                case "rarity_common": return korean ? "일반" : "Common";
-                case "rarity_rare": return korean ? "희귀" : "Rare";
-                case "rarity_epic": return korean ? "영웅" : "Epic";
-                case "rarity_legendary": return korean ? "전설" : "Legendary";
-                case "relic_bought": return korean ? "{0} 구매 완료." : "Bought {0}.";
-                case "relic_sold": return korean ? "{0} 판매. 골드 {1} 획득." : "Sold {0} for {1} gold.";
-                case "relic_full": return korean ? "유물은 최대 4개까지 보유할 수 있습니다." : "You can hold up to four relics.";
-                case "relic_need_gold": return korean ? "이 유물을 구매하려면 골드 {0}이 필요합니다." : "You need {0} gold to buy this relic.";
-                case "relic_refresh_need_gold": return korean ? "상점을 새로고침하려면 골드 {0}이 필요합니다." : "You need {0} gold to refresh the shop.";
-                case "relic_refreshed": return korean ? "골드 {0}을 사용해 상점을 갱신했습니다. 다음 비용은 {1}골드입니다." : "Spent {0} gold to refresh the shop. The next refresh costs {1}.";
-                default: return key;
-            }
         }
 
         private int Roll(int minInclusive, int maxInclusive)
@@ -1768,17 +1618,5 @@ namespace Malatro
             };
         }
 
-        private enum GamePhase
-        {
-            Betting,
-            Racing,
-            Results
-        }
-
-        private enum UiLanguage
-        {
-            Korean,
-            English
-        }
     }
 }

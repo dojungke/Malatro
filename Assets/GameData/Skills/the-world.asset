@@ -20,7 +20,7 @@ MonoBehaviour:
     \uC2DC\uAC04\uC744 5\uCD08 \uB3D9\uC548 \uBA48\uCDA5\uB2C8\uB2E4."
   ManaCost: 150
   Cooldown: 0
-  EffectDuration: 2
+  EffectDuration: 5
   RetainedMana: 0
   EffectType: 3
   SpeedBoost: 0
@@ -30,7 +30,7 @@ MonoBehaviour:
   LateChargeSpeedBoost: 0
   ChargeDistanceMeters: 0
   StunDuration: 0
-  TimeStopDuration: 2
+  TimeStopDuration: 5
   BonusPerHorseAhead: 0.25
   AreaRadiusMeters: 0
   EffectColor: {r: 0.48, g: 0.34, b: 1, a: 1}
