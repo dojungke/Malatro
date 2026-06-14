@@ -50,9 +50,13 @@ namespace Malatro
         public SpriteRenderer Renderer;
         public Sprite[] RunFrames;
         public Texture2D RunSheet;
+        public bool Manifested;
 
         private float animationClock;
         private int animationFrame;
+        private Sprite[] baseRunFrames;
+        private Sprite baseStaticSprite;
+        private Color baseRendererColor = Color.white;
 
         public int AnimationFrame => animationFrame;
         public float SkillEffectAmount => Skill == null
@@ -113,13 +117,25 @@ namespace Malatro
             SpeedMultiplier = 1f;
             SpeedMultiplierTimer = 0f;
             Finished = false;
+            Manifested = false;
             SkillMessage = string.Empty;
             animationClock = 0f;
             animationFrame = 0;
 
+            if (baseRunFrames != null && baseRunFrames.Length > 0)
+            {
+                RunFrames = baseRunFrames;
+            }
+
             if (Renderer != null && RunFrames != null && RunFrames.Length > 0)
             {
+                Renderer.color = baseRendererColor;
                 Renderer.sprite = RunFrames[0];
+            }
+            else if (Renderer != null)
+            {
+                Renderer.color = baseRendererColor;
+                Renderer.sprite = baseStaticSprite;
             }
         }
 
@@ -127,8 +143,53 @@ namespace Malatro
         {
             Renderer = renderer;
             RunFrames = new[] { firstFrame, secondFrame };
+            baseRunFrames = RunFrames;
             RunSheet = firstFrame.texture;
+            baseRendererColor = Color.white;
             Renderer.sprite = firstFrame;
+        }
+
+        public void SetStaticVisual(SpriteRenderer renderer, Sprite sprite, Color color)
+        {
+            Renderer = renderer;
+            RunFrames = null;
+            baseRunFrames = null;
+            baseStaticSprite = sprite;
+            baseRendererColor = color;
+            Renderer.sprite = sprite;
+            Renderer.color = color;
+        }
+
+        public void Manifest(Texture2D manifestedRunSheet)
+        {
+            Manifested = true;
+            if (Renderer == null || manifestedRunSheet == null)
+            {
+                return;
+            }
+
+            var pixelsPerUnit = manifestedRunSheet.height / 0.9f;
+            RunFrames = new[]
+            {
+                CreateFrameSprite(manifestedRunSheet, false, pixelsPerUnit),
+                CreateFrameSprite(manifestedRunSheet, true, pixelsPerUnit)
+            };
+            animationFrame = 0;
+            animationClock = 0f;
+            Renderer.color = Color.white;
+            Renderer.sprite = RunFrames[0];
+        }
+
+        private static Sprite CreateFrameSprite(Texture2D texture, bool secondFrame, float pixelsPerUnit)
+        {
+            var isTwoFrameSheet = texture.width >= texture.height * 1.9f;
+            var frameWidth = isTwoFrameSheet ? texture.width * 0.5f : texture.width;
+            var x = isTwoFrameSheet && secondFrame ? frameWidth : 0f;
+            return Sprite.Create(
+                texture,
+                new Rect(x, 0f, frameWidth, texture.height),
+                new Vector2(0.5f, 0.42f),
+                Mathf.Max(1f, pixelsPerUnit));
         }
 
         public void AnimateRun(float deltaTime)

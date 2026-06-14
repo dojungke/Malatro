@@ -15,10 +15,11 @@ MonoBehaviour:
   Id: trip-up
   EnglishName: Trip Up
   KoreanName: "\uB118\uC5B4\uD2B8\uB9AC\uAE30"
-  EnglishDescription: stun a horse that overtakes this horse for 1 second.
-  KoreanDescription: "\uC774 \uB9D0\uC744 \uCD94\uC6D4\uD558\uB294 \uB9D0\uC744 1\uCD08
-    \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4."
-  ManaCost: 50
+  EnglishDescription: When mana is full, stun a horse that overtakes this horse for
+    1 second.
+  KoreanDescription: "\uB9C8\uB098\uAC00 \uAC00\uB4DD \uCC3C\uC744 \uB54C \uC774
+    \uB9D0\uC744 \uCD94\uC6D4\uD558\uB294 \uB9D0\uC744 1\uCD08 \uB3D9\uC548 \uAE30\uC808\uC2DC\uD0B5\uB2C8\uB2E4."
+  ManaCost: 100
   Cooldown: 1.2
   EffectDuration: 1.1
   RetainedMana: 0
@@ -37,3 +38,4 @@ MonoBehaviour:
   DebuffDuration: 0
   EffectColor: {r: 0.58, g: 0.5, b: 0.42, a: 1}
   Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 0}

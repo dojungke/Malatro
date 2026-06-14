@@ -28,15 +28,6 @@ namespace Malatro
         private readonly List<ShopOfferEntry> shopOffers = new();
         private readonly System.Random rng = new();
 
-        private GUIStyle titleStyle;
-        private GUIStyle bodyStyle;
-        private GUIStyle smallStyle;
-        private GUIStyle cardStyle;
-        private GUIStyle buttonStyle;
-        private GUIStyle navStyle;
-        private GUIStyle centeredStyle;
-        private Font uiFont;
-        private Texture2D whiteTexture;
         private Camera mainCamera;
         private RaceWorldView raceWorldView;
         private HorseDatabase horseDatabase;
@@ -60,6 +51,7 @@ namespace Malatro
         private float podiumTransitionTimer;
         private bool podiumTransitionPending;
         private float racePlaybackSpeed = 1f;
+        private bool racePaused;
         private bool runComplete;
         private UiLanguage language = UiLanguage.Korean;
         private int cameraTargetLane = -1;
@@ -70,11 +62,6 @@ namespace Malatro
         private int skillCameraTargetLane = -1;
         private int cameraTargetBeforeSkill = -1;
         private float skillCameraTargetTimer;
-        private Horse selectedHorseInfo;
-        private RelicData selectedRelicInfo;
-        private HorseStatShopOffer pendingHorseStatOffer;
-        private BetTicket editingTicket;
-        private TicketSelectionMode ticketSelectionMode;
         private string logKey = "choose_ticket";
         private object[] logArgs = Array.Empty<object>();
 
@@ -112,7 +99,6 @@ namespace Malatro
             raceWorldView = raceWorldObject.AddComponent<RaceWorldView>();
             raceWorldView.Initialize(mainCamera);
 
-            whiteTexture = Texture2D.whiteTexture;
             horseDatabase = HorseDatabase.LoadOrCreateRuntimeDefaults();
             relicDatabase = RelicDatabase.LoadOrCreateRuntimeDefaults();
             raceDatabase = RaceDatabase.LoadOrCreateRuntimeDefaults();
@@ -124,7 +110,7 @@ namespace Malatro
         {
             if (phase == GamePhase.Racing)
             {
-                if (podiumTransitionPending)
+                if (!racePaused && podiumTransitionPending)
                 {
                     podiumTransitionTimer = Mathf.Max(0f, podiumTransitionTimer - Time.deltaTime);
                     if (podiumTransitionTimer <= 0f)
@@ -133,7 +119,7 @@ namespace Malatro
                         TransitionTo(GamePhase.Results);
                     }
                 }
-                else
+                else if (!racePaused)
                 {
                     var scaledDeltaTime = Time.deltaTime * racePlaybackSpeed;
                     TickRace(scaledDeltaTime);
@@ -174,15 +160,15 @@ namespace Malatro
 
                 if (Keyboard.current.digit1Key.wasPressedThisFrame)
                 {
-                    racePlaybackSpeed = 1f;
+                    SetRacePlaybackSpeed(1f);
                 }
                 else if (Keyboard.current.digit2Key.wasPressedThisFrame)
                 {
-                    racePlaybackSpeed = 1.5f;
+                    SetRacePlaybackSpeed(2f);
                 }
                 else if (Keyboard.current.digit3Key.wasPressedThisFrame)
                 {
-                    racePlaybackSpeed = 2f;
+                    SetRacePlaybackSpeed(3f);
                 }
             }
 
@@ -197,43 +183,6 @@ namespace Malatro
             {
                 PrepareNextRace();
             }
-        }
-
-        private void OnGUI()
-        {
-            if (canvasUiReady)
-            {
-                return;
-            }
-
-            EnsureStyles();
-
-            DrawTopPanel();
-            if (phase == GamePhase.Racing || phase == GamePhase.Results)
-            {
-                DrawTrack();
-            }
-
-            switch (phase)
-            {
-                case GamePhase.Betting:
-                    DrawBettingPanel();
-                    break;
-                case GamePhase.Shop:
-                    DrawShopPanel();
-                    break;
-                case GamePhase.Racing:
-                    DrawRacePanel();
-                    break;
-                case GamePhase.Results:
-                    DrawResultsPanel();
-                    break;
-            }
-
-            DrawHorseInfoPopup();
-            DrawRelicInfoPopup();
-            DrawTicketSelectionPopup();
-            DrawHorseStatOfferSelectionPopup();
         }
 
         private void StartNewRun()
@@ -265,6 +214,7 @@ namespace Malatro
             podiumTransitionTimer = 0f;
             podiumTransitionPending = false;
             racePlaybackSpeed = 1f;
+            racePaused = false;
             runComplete = false;
             TransitionTo(GamePhase.Betting, false);
             cameraTargetLane = -1;
@@ -327,6 +277,7 @@ namespace Malatro
             {
                 renderer.sprite = BuildBlockSprite();
                 renderer.color = horse.Color;
+                horse.SetStaticVisual(renderer, renderer.sprite, renderer.color);
             }
 
             renderer.sortingOrder = 5;
@@ -427,10 +378,6 @@ namespace Malatro
                 }
             }
 
-            selectedHorseInfo = null;
-            selectedRelicInfo = null;
-            pendingHorseStatOffer = null;
-            editingTicket = null;
             cameraTargetLane = -1;
         }
 
@@ -740,6 +687,7 @@ namespace Malatro
 
             raceClock = 0f;
             resultDelay = 0f;
+            racePaused = false;
             latestStandings.Clear();
             TransitionTo(GamePhase.Racing);
             cameraTargetLane = -1;
@@ -1435,6 +1383,7 @@ namespace Malatro
                 : field.Max(horse => horse.Distance);
             raceWorldView.UpdateView(
                 field,
+                target,
                 focusDistance,
                 raceCameraViewDistance,
                 GetTrackLength(),
@@ -1518,105 +1467,5 @@ namespace Malatro
                 ? Mathf.Max(1f, horse.Skill.ManaCost)
                 : DefaultManaCost;
         }
-
-        private void DrawManaBar(Rect rect, float amount, float maximum)
-        {
-            DrawRect(rect, new Color(0.06f, 0.07f, 0.08f, 1f));
-            var fill = Mathf.Clamp01(amount / Mathf.Max(1f, maximum));
-            DrawRect(new Rect(rect.x, rect.y, rect.width * fill, rect.height), new Color(0.37f, 0.72f, 0.92f, 1f));
-        }
-
-        private Color GetSkillEffectColor(HorseSkillData skill)
-        {
-            return skill != null ? skill.EffectColor : Color.white;
-        }
-
-        private Rect ScaleRect(Rect rect, float scale)
-        {
-            var width = rect.width * scale;
-            var height = rect.height * scale;
-            return new Rect(
-                rect.center.x - width * 0.5f,
-                rect.center.y - height * 0.5f,
-                width,
-                height);
-        }
-
-        private void DrawTintedSprite(Rect rect, Texture texture, Rect textureCoordinates, Color color)
-        {
-            var previous = GUI.color;
-            GUI.color = color;
-            GUI.DrawTextureWithTexCoords(rect, texture, textureCoordinates, true);
-            GUI.color = previous;
-        }
-
-        private void DrawRect(Rect rect, Color color)
-        {
-            var previous = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(rect, whiteTexture);
-            GUI.color = previous;
-        }
-
-        private void EnsureStyles()
-        {
-            if (titleStyle != null)
-            {
-                return;
-            }
-
-            titleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 20,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.95f, 0.93f, 0.86f) }
-            };
-            uiFont = Font.CreateDynamicFontFromOSFont(new[] { "Malgun Gothic", "Arial" }, 18);
-            titleStyle.font = uiFont;
-
-            bodyStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 15,
-                wordWrap = true,
-                normal = { textColor = new Color(0.82f, 0.86f, 0.82f) }
-            };
-            bodyStyle.font = uiFont;
-
-            smallStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 12,
-                wordWrap = true,
-                normal = { textColor = new Color(0.72f, 0.77f, 0.72f) }
-            };
-            smallStyle.font = uiFont;
-
-            cardStyle = new GUIStyle(GUI.skin.box)
-            {
-                normal = { background = Texture2D.grayTexture },
-                padding = new RectOffset(12, 12, 12, 12)
-            };
-
-            buttonStyle = new GUIStyle(GUI.skin.button)
-            {
-                fontSize = 14,
-                fontStyle = FontStyle.Bold,
-                font = uiFont
-            };
-
-            navStyle = new GUIStyle(bodyStyle)
-            {
-                fontSize = 19,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.84f, 0.34f) }
-            };
-
-            centeredStyle = new GUIStyle(smallStyle)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.9f, 0.52f) }
-            };
-        }
-
     }
 }

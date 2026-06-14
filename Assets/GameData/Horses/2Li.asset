@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uC774\uB9AC"
   EnglishShortName: wolf
   KoreanShortName: "\uC774\uB9AC"
+  EnglishDescription: It is an old place name.
+  KoreanDescription: "\uC61B \uC9C0\uBA85\uC785\uB2C8\uB2E4"
   Tags:
   - "\uB3D9\uBB3C"
   - "\uC554\uC0B4\uC790"

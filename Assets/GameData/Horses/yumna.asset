@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uBCC0\uACBD\uBC31"
   EnglishShortName: Margrave
   KoreanShortName: "\uBCC0\uACBD\uBC31"
+  EnglishDescription: They ran away from their territory.
+  KoreanDescription: "\uC601\uC9C0\uC5D0\uC11C \uAC00\uCD9C\uD588\uC2B5\uB2C8\uB2E4."
   Tags:
   - "\uB9C8\uC871"
   - "\uAE30\uC0AC"

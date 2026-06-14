@@ -42,6 +42,8 @@ namespace Malatro
         public string KoreanName;
         public string EnglishShortName;
         public string KoreanShortName;
+        [TextArea] public string EnglishDescription;
+        [TextArea] public string KoreanDescription;
         public List<string> Tags = new List<string>();
 
         [Header("Race Stats")]
@@ -74,6 +76,17 @@ namespace Malatro
         {
             var localized = korean ? KoreanShortName : EnglishShortName;
             return string.IsNullOrWhiteSpace(localized) ? GetName(korean) : localized;
+        }
+
+        public string GetDescription(bool korean)
+        {
+            var localized = korean ? KoreanDescription : EnglishDescription;
+            if (!string.IsNullOrWhiteSpace(localized))
+            {
+                return localized;
+            }
+
+            return korean ? EnglishDescription : KoreanDescription;
         }
 
         public TrackAptitudeGrade GetAptitude(TrackSurface surface)

@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uAE30\uC0AC\uB2E8\uC7A5"
   EnglishShortName: Arc Knight
   KoreanShortName: "\uAE30\uC0AC\uB2E8\uC7A5"
+  EnglishDescription: They ran away from the order of knights.
+  KoreanDescription: "\uAE30\uC0AC\uB2E8\uC5D0\uC11C \uAC00\uCD9C\uD588\uC2B5\uB2C8\uB2E4."
   Tags:
   - "\uB9C8\uC871"
   - "\uAE30\uC0AC"

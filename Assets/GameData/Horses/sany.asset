@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uB5A0\uB3CC\uC774 \uB9C8\uBC95 \uC0C1\uC778"
   EnglishShortName: merchant
   KoreanShortName: "\uC0C1\uC778"
+  EnglishDescription: They filled out the application form incorrectly.
+  KoreanDescription: "\uC2E0\uCCAD\uC11C\uB97C \uC798\uBABB \uC801\uC5C8\uC2B5\uB2C8\uB2E4."
   Tags:
   - "\uC655\uAD6D\uC778"
   - "\uB9C8\uBC95\uC0AC"

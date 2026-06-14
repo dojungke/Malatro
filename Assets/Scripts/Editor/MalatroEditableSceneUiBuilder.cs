@@ -1,4 +1,5 @@
 using System.IO;
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEditor;
@@ -17,14 +18,23 @@ namespace Malatro.EditorTools
         private const string HorseImageQueuePath = "Temp/MalatroEditableHorseImages.queue";
         private const string RaceScreenQueuePath = "Temp/MalatroEditableRaceScreen.queue";
         private const string KoreanFontQueuePath = "Temp/MalatroApplyKoreanFont.queue";
+        private const string PopupPrefabQueuePath = "Temp/MalatroPopupPrefabs.queue";
         private const string HorseRaceIconPrefabPath = "Assets/Resources/UI/HorseRaceIcon.prefab";
         private const string HorseInfoCardPrefabPath = "Assets/Resources/UI/HorseInfoCard.prefab";
         private const string BetTicketCardPrefabPath = "Assets/Resources/UI/BetTicketCard.prefab";
         private const string RelicSlotPrefabPath = "Assets/Resources/UI/RelicSlot.prefab";
         private const string RelicShopOfferPrefabPath = "Assets/Resources/UI/RelicShopOfferCard.prefab";
+        private const string HorseInfoPopupPrefabPath = "Assets/Resources/UI/HorseInfoPopup.prefab";
+        private const string RelicInfoPopupPrefabPath = "Assets/Resources/UI/RelicInfoPopup.prefab";
         private const string KoreanFontPath = "Assets/Resources/Fonts/NanumGothic-Bold.ttf";
         private const string KoreanFontAssetPath = "Assets/Resources/Fonts/NanumGothic Bold SDF.asset";
+        private const string CjkFallbackFontPath = "Assets/Resources/Fonts/NotoSansKR-VF.ttf";
+        private const string CjkFallbackFontAssetPath = "Assets/Resources/Fonts/Noto Sans KR Fallback SDF.asset";
+        private const string SymbolFontPath = "Assets/Resources/Fonts/NotoSansSymbols2-Regular.ttf";
+        private const string SymbolFontAssetPath = "Assets/Resources/Fonts/Noto Sans Symbols 2 SDF.asset";
         private static TMP_FontAsset koreanFontAsset;
+        private static TMP_FontAsset cjkFallbackFontAsset;
+        private static TMP_FontAsset symbolFontAsset;
 
         private static readonly Color BoardBlue = new(0.13f, 0.25f, 0.41f, 1f);
         private static readonly Color BoardBlueDark = new(0.08f, 0.16f, 0.27f, 1f);
@@ -36,10 +46,83 @@ namespace Malatro.EditorTools
 
         static MalatroEditableSceneUiBuilder()
         {
+            EditorApplication.delayCall += EnsureKoreanFontAsset;
             EditorApplication.delayCall += RebuildQueuedEditableSceneUi;
             EditorApplication.delayCall += AddQueuedHorseImages;
             EditorApplication.delayCall += RebuildQueuedRaceScreen;
             EditorApplication.delayCall += ApplyQueuedKoreanFont;
+            EditorApplication.delayCall += UpgradeOpenRaceControls;
+            EditorApplication.delayCall += EnsureHorseRaceIconPrefab;
+            EditorApplication.delayCall += CreateQueuedPopupPrefabs;
+        }
+
+        [InitializeOnLoadMethod]
+        private static void ScheduleQueuedPopupPrefabUpdate()
+        {
+            EditorApplication.delayCall += CreateQueuedPopupPrefabs;
+        }
+
+        private static void UpgradeOpenRaceControls()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode
+                || SceneManager.GetActiveScene().path != "Assets/Scenes/SampleScene.unity")
+            {
+                return;
+            }
+
+            var canvas = Object.FindAnyObjectByType<Canvas>();
+            var raceScreen = canvas != null
+                ? canvas.transform.Find("Malatro Editable UI/RaceScreen")
+                : null;
+            var panel = raceScreen != null ? raceScreen.Find("RaceSpeedPanel") as RectTransform : null;
+            if (raceScreen == null)
+            {
+                return;
+            }
+
+            if (panel == null)
+            {
+                panel = Image(
+                    "RaceSpeedPanel",
+                    raceScreen,
+                    new Color(0.02f, 0.035f, 0.03f, 0.9f),
+                    true,
+                    1480f,
+                    28f,
+                    300f,
+                    88f).rectTransform;
+                Outline(panel.gameObject, new Color(0.7f, 0.62f, 0.35f, 0.65f));
+            }
+
+            Fixed(panel, 1480f, 28f, 300f, 88f);
+            foreach (var oldName in new[]
+                     {
+                         "RaceSpeedLabel",
+                         "RaceSpeed1Button",
+                         "RaceSpeed2Button",
+                         "RaceSpeed3Button"
+                     })
+            {
+                var old = panel.Find(oldName);
+                if (old != null)
+                {
+                    Object.DestroyImmediate(old.gameObject);
+                }
+            }
+
+            if (panel.Find("CycleSpeedButton") == null)
+            {
+                Button("CycleSpeedButton", panel, "배속 1x", 12f, 18f, 128f, 54f, Gold);
+            }
+
+            if (panel.Find("RacePauseButton") == null)
+            {
+                Button("RacePauseButton", panel, "일시 정지", 150f, 18f, 138f, 54f, PaperMuted);
+            }
+
+            EditorUtility.SetDirty(panel);
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
         }
 
         private static void RebuildQueuedEditableSceneUi()
@@ -88,6 +171,19 @@ namespace Malatro.EditorTools
             File.Delete(KoreanFontQueuePath);
             ApplyKoreanFontToExistingUi();
             Debug.Log("Nanum Gothic Bold was applied to the existing editable UI.");
+        }
+
+        private static void CreateQueuedPopupPrefabs()
+        {
+            if (!File.Exists(PopupPrefabQueuePath))
+            {
+                return;
+            }
+
+            File.Delete(PopupPrefabQueuePath);
+            EnsurePopupPrefabs();
+            EnsureHorsePopupTags();
+            Debug.Log("Horse and relic popup prefabs were created.");
         }
 
         [MenuItem("Malatro/UI/Apply Korean Font To Existing UI")]
@@ -470,6 +566,11 @@ namespace Malatro.EditorTools
             Label("ProgressFinish", progressPanel.transform, "100%", 13, FontStyles.Bold, Gold, 660f, 32f, 38f, 28f);
             Label("RaceProgressText", progressPanel.transform, "Leader 0%", 13, FontStyles.Bold, Paper, 250f, 62f, 200f, 22f);
 
+            var speedPanel = Image("RaceSpeedPanel", screen, new Color(0.02f, 0.035f, 0.03f, 0.9f), true, 1480f, 28f, 300f, 88f);
+            Outline(speedPanel.gameObject, new Color(0.7f, 0.62f, 0.35f, 0.65f));
+            Button("CycleSpeedButton", speedPanel.transform, "배속 1x", 12f, 18f, 128f, 54f, Gold);
+            Button("RacePauseButton", speedPanel.transform, "일시 정지", 150f, 18f, 138f, 54f, PaperMuted);
+
             var course = Rect("RaceCourse", screen);
             Fixed(course, 56f, 172f, 1460f, 790f);
 
@@ -487,6 +588,7 @@ namespace Malatro.EditorTools
         {
             if (AssetDatabase.LoadAssetAtPath<GameObject>(HorseRaceIconPrefabPath) != null)
             {
+                EnsureHorseRaceIconManaBar();
                 return;
             }
 
@@ -511,12 +613,50 @@ namespace Malatro.EditorTools
             Label("RankText", rank.transform, "1", 18, FontStyles.Bold, Color.white, 0f, 0f, 34f, 34f);
             var namePlate = Image("NamePlate", root, new Color(0.02f, 0.03f, 0.025f, 0.78f), false, 4f, 64f, 104f, 24f);
             Label("HorseName", namePlate.transform, "Horse", 13, FontStyles.Bold, Paper, 2f, 0f, 100f, 24f);
+            var manaBar = Image("ManaBar", root, new Color(0.025f, 0.035f, 0.045f, 0.94f), false, 18f, 94f, 76f, 8f);
+            Image("ManaFill", manaBar.transform, new Color(0.25f, 0.72f, 1f, 1f), false, 2f, 2f, 72f, 4f);
 
             PrefabUtility.SaveAsPrefabAsset(root.gameObject, HorseRaceIconPrefabPath);
             Object.DestroyImmediate(root.gameObject);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"Created editable horse race icon prefab at {HorseRaceIconPrefabPath}.");
+        }
+
+        private static void EnsureHorseRaceIconManaBar()
+        {
+            var root = PrefabUtility.LoadPrefabContents(HorseRaceIconPrefabPath);
+            try
+            {
+                if (root.transform.Find("ManaBar") != null)
+                {
+                    return;
+                }
+
+                var manaBar = Image(
+                    "ManaBar",
+                    root.transform,
+                    new Color(0.025f, 0.035f, 0.045f, 0.94f),
+                    false,
+                    18f,
+                    94f,
+                    76f,
+                    8f);
+                Image(
+                    "ManaFill",
+                    manaBar.transform,
+                    new Color(0.25f, 0.72f, 1f, 1f),
+                    false,
+                    2f,
+                    2f,
+                    72f,
+                    4f);
+                PrefabUtility.SaveAsPrefabAsset(root, HorseRaceIconPrefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         [MenuItem("Malatro/UI/Create Reusable UI Prefabs")]
@@ -557,13 +697,167 @@ namespace Malatro.EditorTools
             CreatePrefabIfMissing(RelicShopOfferPrefabPath, () =>
             {
                 var card = Card(null, "RelicShopOfferCard", "Relic", 300f, 390f, Gold);
+                var title = card.Find("TitleText") as RectTransform;
+                if (title != null)
+                {
+                    Fixed(title, 20f, 44f, 260f, 64f);
+                }
+
+                var description = Label(
+                    "DescriptionText",
+                    card,
+                    "Relic effect",
+                    15,
+                    FontStyles.Normal,
+                    Ink,
+                    24f,
+                    118f,
+                    252f,
+                    126f,
+                    TextAlignmentOptions.Top);
+                description.textWrappingMode = TextWrappingModes.Normal;
+                description.raycastTarget = false;
                 Label("PriceText", card, "Price 30", 20, FontStyles.Bold, Ink, 34f, 282f, 232f, 36f);
                 Button("BuyButton", card, "Buy", 54f, 326f, 192f, 42f, Green);
                 return card.gameObject;
             });
+            EnsurePopupPrefabs();
+            EnsureHorsePopupTags();
+            EnsureRelicShopOfferDescription();
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
+        }
+
+        private static void EnsurePopupPrefabs()
+        {
+            EnsureUiFolder();
+            EnsureKoreanFontAsset();
+
+            CreatePrefabIfMissing(HorseInfoPopupPrefabPath, () =>
+            {
+                var panel = Image("HorseInfoPopup", null, BoardBlueDark, true, 0f, 0f, 620f, 690f);
+                Outline(panel.gameObject, Gold);
+                Accent(panel.transform, Gold, 8f);
+                var portrait = Image("HorseImage", panel.transform, Color.clear, false, 40f, 36f, 540f, 180f);
+                portrait.preserveAspect = true;
+                Label("NameText", panel.transform, "Horse", 30, FontStyles.Bold, Paper, 40f, 226f, 540f, 48f, TextAlignmentOptions.MidlineLeft);
+                Label("OddsText", panel.transform, "Odds 2.5x", 20, FontStyles.Bold, Gold, 40f, 278f, 540f, 34f, TextAlignmentOptions.MidlineLeft);
+                var stats = Label("StatsText", panel.transform, "Stats", 17, FontStyles.Normal, Paper, 40f, 322f, 540f, 80f, TextAlignmentOptions.TopLeft);
+                stats.textWrappingMode = TextWrappingModes.Normal;
+                Label("SkillNameText", panel.transform, "Skill", 21, FontStyles.Bold, Gold, 40f, 414f, 540f, 36f, TextAlignmentOptions.MidlineLeft);
+                var description = Label("SkillDescriptionText", panel.transform, "Skill description", 17, FontStyles.Normal, PaperMuted, 40f, 458f, 540f, 130f, TextAlignmentOptions.TopLeft);
+                description.textWrappingMode = TextWrappingModes.Normal;
+                Button("CloseButton", panel.transform, "OK", 190f, 612f, 240f, 54f, Green);
+                return panel.gameObject;
+            });
+
+            CreatePrefabIfMissing(RelicInfoPopupPrefabPath, () =>
+            {
+                var panel = Image("RelicInfoPopup", null, BoardBlueDark, true, 0f, 0f, 620f, 620f);
+                Outline(panel.gameObject, Gold);
+                Accent(panel.transform, Gold, 8f);
+                var icon = Image("RelicIcon", panel.transform, PaperMuted, false, 210f, 34f, 200f, 150f);
+                icon.preserveAspect = true;
+                Label("RarityText", panel.transform, "COMMON", 16, FontStyles.Bold, Gold, 40f, 194f, 540f, 28f);
+                Label("NameText", panel.transform, "Relic", 30, FontStyles.Bold, Paper, 40f, 226f, 540f, 48f);
+                var description = Label("DescriptionText", panel.transform, "Relic effect", 17, FontStyles.Normal, PaperMuted, 50f, 288f, 520f, 138f, TextAlignmentOptions.TopLeft);
+                description.textWrappingMode = TextWrappingModes.Normal;
+                Label("PriceText", panel.transform, "Price 30", 19, FontStyles.Bold, Gold, 40f, 438f, 540f, 36f);
+                Button("CloseButton", panel.transform, "Close", 46f, 520f, 250f, 58f, PaperMuted);
+                Button("ActionButton", panel.transform, "Buy", 324f, 520f, 250f, 58f, Green);
+                return panel.gameObject;
+            });
+
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void EnsureHorsePopupTags()
+        {
+            var root = PrefabUtility.LoadPrefabContents(HorseInfoPopupPrefabPath);
+            try
+            {
+                var stats = root.transform.Find("StatsText")?.GetComponent<TextMeshProUGUI>();
+                if (stats != null)
+                {
+                    Fixed(stats.rectTransform, 40f, 322f, 540f, 76f);
+                }
+
+                var tags = root.transform.Find("TagsText")?.GetComponent<TextMeshProUGUI>();
+                if (tags == null)
+                {
+                    tags = Label(
+                        "TagsText",
+                        root.transform,
+                        "Tags: Mage · Knight",
+                        16,
+                        FontStyles.Bold,
+                        Gold,
+                        40f,
+                        402f,
+                        540f,
+                        34f,
+                        TextAlignmentOptions.MidlineLeft);
+                }
+
+                Fixed(tags.rectTransform, 40f, 402f, 540f, 34f);
+                var skillName = root.transform.Find("SkillNameText")?.GetComponent<TextMeshProUGUI>();
+                if (skillName != null)
+                {
+                    Fixed(skillName.rectTransform, 40f, 444f, 540f, 36f);
+                }
+
+                var description = root.transform.Find("SkillDescriptionText")?.GetComponent<TextMeshProUGUI>();
+                if (description != null)
+                {
+                    Fixed(description.rectTransform, 40f, 488f, 540f, 100f);
+                }
+
+                PrefabUtility.SaveAsPrefabAsset(root, HorseInfoPopupPrefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+        }
+
+        private static void EnsureRelicShopOfferDescription()
+        {
+            var root = PrefabUtility.LoadPrefabContents(RelicShopOfferPrefabPath);
+            try
+            {
+                var title = root.transform.Find("TitleText") as RectTransform;
+                if (title != null)
+                {
+                    Fixed(title, 20f, 44f, 260f, 64f);
+                }
+
+                var description = root.transform.Find("DescriptionText")?.GetComponent<TextMeshProUGUI>();
+                if (description == null)
+                {
+                    description = Label(
+                        "DescriptionText",
+                        root.transform,
+                        "Relic effect",
+                        15,
+                        FontStyles.Normal,
+                        Ink,
+                        24f,
+                        118f,
+                        252f,
+                        126f,
+                        TextAlignmentOptions.Top);
+                }
+
+                description.textWrappingMode = TextWrappingModes.Normal;
+                description.raycastTarget = false;
+                Fixed(description.rectTransform, 24f, 118f, 252f, 126f);
+                PrefabUtility.SaveAsPrefabAsset(root, RelicShopOfferPrefabPath);
+            }
+            finally
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+            }
         }
 
         private static void EnsureUiFolder()
@@ -608,10 +902,14 @@ namespace Malatro.EditorTools
 
         private static void EnsureKoreanFontAsset()
         {
+            EnsureCjkFallbackFontAsset();
+            EnsureSymbolFontAsset();
             koreanFontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(KoreanFontAssetPath);
             if (koreanFontAsset != null && koreanFontAsset.material != null)
             {
                 koreanFontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+                AddFallbackFont(koreanFontAsset, cjkFallbackFontAsset);
+                AddFallbackFont(koreanFontAsset, symbolFontAsset);
                 return;
             }
 
@@ -632,6 +930,8 @@ namespace Malatro.EditorTools
             koreanFontAsset.name = "NanumGothic Bold SDF";
             koreanFontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
             koreanFontAsset.isMultiAtlasTexturesEnabled = true;
+            AddFallbackFont(koreanFontAsset, cjkFallbackFontAsset);
+            AddFallbackFont(koreanFontAsset, symbolFontAsset);
             AssetDatabase.CreateAsset(koreanFontAsset, KoreanFontAssetPath);
             if (koreanFontAsset.material != null && !AssetDatabase.Contains(koreanFontAsset.material))
             {
@@ -653,6 +953,93 @@ namespace Malatro.EditorTools
             EditorUtility.SetDirty(koreanFontAsset);
             AssetDatabase.SaveAssets();
             AssetDatabase.ImportAsset(KoreanFontAssetPath, ImportAssetOptions.ForceUpdate);
+        }
+
+        private static void EnsureCjkFallbackFontAsset()
+        {
+            cjkFallbackFontAsset = EnsureFallbackFontAsset(
+                CjkFallbackFontPath,
+                CjkFallbackFontAssetPath,
+                "Noto Sans KR Fallback");
+        }
+
+        private static void EnsureSymbolFontAsset()
+        {
+            symbolFontAsset = EnsureFallbackFontAsset(
+                SymbolFontPath,
+                SymbolFontAssetPath,
+                "Noto Sans Symbols 2");
+        }
+
+        private static TMP_FontAsset EnsureFallbackFontAsset(
+            string sourcePath,
+            string assetPath,
+            string assetName)
+        {
+            var fontAsset = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(assetPath);
+            if (fontAsset != null && fontAsset.material != null)
+            {
+                fontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+                return fontAsset;
+            }
+
+            if (fontAsset != null)
+            {
+                AssetDatabase.DeleteAsset(assetPath);
+            }
+
+            var sourceFont = AssetDatabase.LoadAssetAtPath<Font>(sourcePath);
+            if (sourceFont == null)
+            {
+                Debug.LogWarning($"Fallback font was not found at {sourcePath}.");
+                return null;
+            }
+
+            fontAsset = TMP_FontAsset.CreateFontAsset(sourceFont);
+            fontAsset.name = $"{assetName} SDF";
+            fontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+            fontAsset.isMultiAtlasTexturesEnabled = true;
+            AssetDatabase.CreateAsset(fontAsset, assetPath);
+
+            if (fontAsset.material != null && !AssetDatabase.Contains(fontAsset.material))
+            {
+                fontAsset.material.name = $"{assetName} Material";
+                AssetDatabase.AddObjectToAsset(fontAsset.material, fontAsset);
+            }
+
+            foreach (var atlasTexture in fontAsset.atlasTextures)
+            {
+                if (atlasTexture == null || AssetDatabase.Contains(atlasTexture))
+                {
+                    continue;
+                }
+
+                atlasTexture.name = $"{assetName} Atlas";
+                AssetDatabase.AddObjectToAsset(atlasTexture, fontAsset);
+            }
+
+            EditorUtility.SetDirty(fontAsset);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+            return fontAsset;
+        }
+
+        private static void AddFallbackFont(TMP_FontAsset primary, TMP_FontAsset fallback)
+        {
+            if (primary == null || fallback == null)
+            {
+                return;
+            }
+
+            primary.fallbackFontAssetTable ??= new List<TMP_FontAsset>();
+            if (primary.fallbackFontAssetTable.Contains(fallback))
+            {
+                return;
+            }
+
+            primary.fallbackFontAssetTable.Add(fallback);
+            EditorUtility.SetDirty(primary);
+            AssetDatabase.SaveAssets();
         }
 
         private static void TicketCard(Transform parent, int index)

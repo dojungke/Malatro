@@ -17,9 +17,9 @@ MonoBehaviour:
   KoreanName: "\uD280\uC5B4\uC624\uB974\uAE30"
   EnglishDescription: Leap 100 meters forward.
   KoreanDescription: "100\uBBF8\uD130 \uC55E\uC73C\uB85C \uD280\uC5B4\uC624\uB985\uB2C8\uB2E4."
-  ManaCost: 7
-  Cooldown: 0
-  EffectDuration: 0.3
+  ManaCost: 100
+  Cooldown: 1.2
+  EffectDuration: 1.1
   RetainedMana: 0
   EffectType: 9
   SpeedBoost: 0
@@ -36,3 +36,4 @@ MonoBehaviour:
   DebuffDuration: 0
   EffectColor: {r: 0.2, g: 0.85, b: 0.9, a: 1}
   Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 0}

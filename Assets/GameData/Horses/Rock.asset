@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uB3CC"
   EnglishShortName: Rock
   KoreanShortName: "\uB3CC"
+  EnglishDescription: It is a rock.
+  KoreanDescription: "\uB3CC\uC785\uB2C8\uB2E4."
   Tags:
   - "\uAE30\uC0AC"
   - "\uC554\uC0B4\uC790"

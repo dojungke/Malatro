@@ -14,16 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.RelicDatabase
   Relics:
   - {fileID: 11400000, guid: 3718761f9ad8f004e88841ae0ae4f105, type: 2}
-  - {fileID: 11400000, guid: 4b7e5b8f6446a0c41af0d4b53a493bbf, type: 2}
-  - {fileID: 11400000, guid: 9c555b83db81adb44ad6d860d936cab0, type: 2}
-  - {fileID: 11400000, guid: 5807045eacf497e438da71e714f547de, type: 2}
-  - {fileID: 11400000, guid: a8fa32a187d7bb2498d546f269ffefda, type: 2}
+  - {fileID: 11400000, guid: 8abf7c1d0e4d4ce88dfeaa753b3b9120, type: 2}
   - {fileID: 11400000, guid: 667e8bd9521033e419f94cf4b1c9a17d, type: 2}
   - {fileID: 11400000, guid: b9f1043acb6073649bb529ab742f21b9, type: 2}
-  - {fileID: 11400000, guid: 054ecd063d6fc5c4fb702542aef5249e, type: 2}
-  - {fileID: 11400000, guid: e4a1c729f10a4a18b8a643b36d76ce31, type: 2}
   - {fileID: 11400000, guid: ac371761d3fb4d84b80f65e6c88d204a, type: 2}
+  - {fileID: 11400000, guid: 5807045eacf497e438da71e714f547de, type: 2}
+  - {fileID: 11400000, guid: a8fa32a187d7bb2498d546f269ffefda, type: 2}
   - {fileID: 11400000, guid: f6bda14fd37f4e4abbd60a3fd5d42a1d, type: 2}
-  - {fileID: 11400000, guid: 8abf7c1d0e4d4ce88dfeaa753b3b9120, type: 2}
+  - {fileID: 11400000, guid: 054ecd063d6fc5c4fb702542aef5249e, type: 2}
   - {fileID: 11400000, guid: c49c6da9b7b54e5eb9fe28b98656e1ba, type: 2}
   - {fileID: 11400000, guid: b0f9b2f17ef844c4bb8cb2f86e091af3, type: 2}
+  - {fileID: 11400000, guid: e4a1c729f10a4a18b8a643b36d76ce31, type: 2}
+  - {fileID: 11400000, guid: 9c555b83db81adb44ad6d860d936cab0, type: 2}
+  - {fileID: 11400000, guid: 4b7e5b8f6446a0c41af0d4b53a493bbf, type: 2}

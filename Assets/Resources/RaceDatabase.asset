@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: RaceDatabase
   m_EditorClassIdentifier: Assembly-CSharp::Malatro.RaceDatabase
   Races:
-  - {fileID: 11400000, guid: 5c9128e34a6c05145a765c83a119a5d9, type: 2}
-  - {fileID: 11400000, guid: cad18e7d8d8926c4f8129e23774712d5, type: 2}
   - {fileID: 11400000, guid: a72a297006dd28445a9f0437df4d73d0, type: 2}
-  - {fileID: 11400000, guid: 5b3fe9a5010a392449fe4dbc2be03dc4, type: 2}
   - {fileID: 11400000, guid: b93dec435218730438f84cb102edae99, type: 2}
   - {fileID: 11400000, guid: c00d847741addd34d8610d7f8c569fe8, type: 2}
+  - {fileID: 11400000, guid: 5c9128e34a6c05145a765c83a119a5d9, type: 2}
+  - {fileID: 11400000, guid: cad18e7d8d8926c4f8129e23774712d5, type: 2}
+  - {fileID: 11400000, guid: 5b3fe9a5010a392449fe4dbc2be03dc4, type: 2}

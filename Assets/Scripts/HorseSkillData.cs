@@ -15,7 +15,8 @@ namespace Malatro
         AreaStun,
         AreaSlow,
         Leap,
-        OvertakeTrip
+        OvertakeTrip,
+        Manifestation
     }
 
     [CreateAssetMenu(fileName = "HorseSkillData", menuName = "Malatro/Horse Skill Data")]
@@ -53,6 +54,8 @@ namespace Malatro
         [Header("Visual")]
         public Color EffectColor = Color.white;
         public Sprite Icon;
+        [Tooltip("Optional run sheet used after a manifestation skill activates.")]
+        public Texture2D ManifestedRunSheet;
 
         public string GetName(bool korean)
         {
@@ -74,6 +77,11 @@ namespace Malatro
             }
 
             if (IsReactive)
+            {
+                return false;
+            }
+
+            if (EffectType == HorseSkillEffectType.Manifestation && horse.Manifested)
             {
                 return false;
             }
@@ -312,6 +320,10 @@ namespace Malatro
                 horse.Distance = Mathf.Min(
                     trackLength,
                     horse.Distance + MetersToSimulationDistance(ChargeDistanceMeters));
+            }
+            else if (EffectType == HorseSkillEffectType.Manifestation)
+            {
+                horse.Manifest(ManifestedRunSheet);
             }
 
             horse.SkillCooldown = Cooldown;

@@ -90,9 +90,14 @@ namespace Malatro
 
         public float GetCurveOffset(float normalizedX)
         {
-            var centered = normalizedX * 2f - 1f;
-            var curve = 1f - centered * centered;
-            return curve * bend;
+            // Monotonic turn curve with a small edge slope. This avoids the old
+            // center-bulge parabola, but also avoids making the screen edges
+            // perfectly horizontal at the end of a corner.
+            const float edgeSlope = 1;
+            var u = Mathf.Clamp01(normalizedX) * 2f - 1f;
+            var a = (edgeSlope - 1f) * 0.5f;
+            var b = (3f - edgeSlope) * 0.5f;
+            return u * (b + a * u * u) * bend;
         }
 
         private void AddTrackStrip(VertexHelper vh, Rect rect, float bottom, float top)

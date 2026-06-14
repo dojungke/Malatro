@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uACAC\uC2B5 \uB9C8\uBC95\uC0AC"
   EnglishShortName: apprentice
   KoreanShortName: "\uACAC\uC2B5"
+  EnglishDescription: They ran away from the magic tower.
+  KoreanDescription: "\uB9C8\uD0D1\uC5D0\uC11C \uAC00\uCD9C\uD588\uC2B5\uB2C8\uB2E4"
   Tags:
   - "\uB9C8\uC871"
   - "\uB9C8\uBC95\uC0AC"

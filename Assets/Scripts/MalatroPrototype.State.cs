@@ -42,13 +42,6 @@ namespace Malatro
             Results
         }
 
-        private enum TicketSelectionMode
-        {
-            None,
-            Type,
-            FirstHorse,
-            SecondHorse
-        }
 
         private enum UiLanguage
         {

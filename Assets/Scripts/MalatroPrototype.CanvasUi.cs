@@ -11,58 +11,9 @@ namespace Malatro
 {
     public sealed partial class MalatroPrototype
     {
-        private static readonly Color UiBackground = new Color(0.035f, 0.045f, 0.05f, 1f);
-        private static readonly Color UiSurface = new Color(0.075f, 0.09f, 0.095f, 1f);
-        private static readonly Color UiSurfaceRaised = new Color(0.11f, 0.125f, 0.13f, 1f);
-        private static readonly Color UiBorder = new Color(0.24f, 0.28f, 0.27f, 1f);
-        private static readonly Color UiText = new Color(0.93f, 0.94f, 0.9f, 1f);
-        private static readonly Color UiMuted = new Color(0.64f, 0.68f, 0.65f, 1f);
-        private static readonly Color UiGold = new Color(0.96f, 0.73f, 0.24f, 1f);
-        private static readonly Color UiGreen = new Color(0.22f, 0.62f, 0.42f, 1f);
-        private static readonly Color UiRed = new Color(0.72f, 0.28f, 0.25f, 1f);
-        private static readonly Color BoardBlue = new Color(0.13f, 0.25f, 0.41f, 1f);
-        private static readonly Color BoardBlueDark = new Color(0.08f, 0.16f, 0.27f, 1f);
-        private static readonly Color CardPaper = new Color(0.96f, 0.95f, 0.9f, 1f);
-        private static readonly Color CardPaperMuted = new Color(0.88f, 0.87f, 0.81f, 1f);
-        private static readonly Color Ink = new Color(0.09f, 0.085f, 0.075f, 1f);
-
-        private bool canvasUiReady;
-        private Canvas productionCanvas;
-        private RectTransform productionRoot;
-        private RectTransform headerRoot;
-        private RectTransform screenRoot;
-        private RectTransform modalRoot;
-        private TextMeshProUGUI headerGold;
-        private TextMeshProUGUI headerProgress;
-        private TextMeshProUGUI raceClockText;
-        private TextMeshProUGUI raceMessageText;
-        private TextMeshProUGUI raceStandingText;
-        private TextMeshProUGUI raceTargetText;
-        private TextMeshProUGUI raceInfoText;
-        private RectTransform raceCourseRect;
-        private RectTransform raceFinishMarker;
-        private RectTransform raceRouteBar;
-        private RectTransform raceRouteMarker;
-        private RectTransform raceProgressFill;
-        private RectTransform raceProgressMarkers;
-        private TextMeshProUGUI raceProgressText;
-        private TextMeshProUGUI podiumRecordsText;
-        private DynamicRaceTrackGraphic dynamicRaceTrack;
-        private TMP_FontAsset uiFontAsset;
-        private GameObject horseInfoCardPrefab;
-        private GameObject betTicketCardPrefab;
-        private GameObject relicSlotPrefab;
-        private GameObject relicShopOfferPrefab;
-        private readonly Dictionary<Horse, RectTransform> raceHorseIcons = new();
-        private readonly Dictionary<Horse, RectTransform> raceProgressHorseMarkers = new();
-        private readonly Dictionary<BetTicket, float> raceTicketHitProbabilities = new();
-        private float nextRaceTicketProbabilityRefresh;
-        private GamePhase renderedPhase = (GamePhase)(-1);
-        private bool uiDirty;
-        private bool usingEditableSceneUi;
-
         private void BuildCanvasUi()
         {
+            InitializeScreenControllers();
             productionCanvas = FindAnyObjectByType<Canvas>();
             if (productionCanvas == null)
             {
@@ -89,6 +40,8 @@ namespace Malatro
 
             EnsureEventSystem();
             LoadUiFont();
+            uiFactory.Configure(uiFontAsset, UiText);
+            activeUiFactory = uiFactory;
 
             var editableRoot = productionCanvas.transform.Find("Malatro Editable UI") as RectTransform;
             if (editableRoot != null)
@@ -174,9 +127,44 @@ namespace Malatro
             }
 
             uiFontAsset = TMP_FontAsset.CreateFontAsset(font);
+            if (uiFontAsset == null)
+            {
+                Debug.LogWarning("Failed to create the runtime Nanum Gothic TMP font asset.");
+                return;
+            }
+
             uiFontAsset.name = "NanumGothic Bold Runtime SDF";
             uiFontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
             uiFontAsset.isMultiAtlasTexturesEnabled = true;
+            uiFontAsset.fallbackFontAssetTable ??= new List<TMP_FontAsset>();
+
+            AddRuntimeFallbackFont("Fonts/NotoSansKR-VF", "Noto Sans KR Fallback Runtime SDF");
+            AddRuntimeFallbackFont("Fonts/NotoSansSymbols2-Regular", "Noto Sans Symbols 2 Runtime SDF");
+        }
+
+        private void AddRuntimeFallbackFont(string resourcePath, string assetName)
+        {
+            var fallbackFont = Resources.Load<Font>(resourcePath);
+            if (fallbackFont == null)
+            {
+                return;
+            }
+
+            var fallbackFontAsset = TMP_FontAsset.CreateFontAsset(fallbackFont);
+            if (fallbackFontAsset == null || uiFontAsset == null)
+            {
+                Debug.LogWarning($"Failed to create the TMP fallback font asset: {resourcePath}");
+                return;
+            }
+
+            fallbackFontAsset.name = assetName;
+            fallbackFontAsset.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+            fallbackFontAsset.isMultiAtlasTexturesEnabled = true;
+            uiFontAsset.fallbackFontAssetTable ??= new List<TMP_FontAsset>();
+            if (!uiFontAsset.fallbackFontAssetTable.Contains(fallbackFontAsset))
+            {
+                uiFontAsset.fallbackFontAssetTable.Add(fallbackFontAsset);
+            }
         }
 
         private void BuildHeader()
@@ -267,21 +255,7 @@ namespace Malatro
             raceProgressHorseMarkers.Clear();
             dynamicRaceTrack = null;
 
-            switch (phase)
-            {
-                case GamePhase.Betting:
-                    BuildPredictionScreen();
-                    break;
-                case GamePhase.Shop:
-                    BuildShopScreen();
-                    break;
-                case GamePhase.Racing:
-                    BuildRaceScreen();
-                    break;
-                case GamePhase.Results:
-                    BuildResultsScreen();
-                    break;
-            }
+            GetActiveScreenController().BuildRuntime();
         }
 
         private void RefreshEditableSceneUi()
@@ -318,17 +292,20 @@ namespace Malatro
 
             if (bettingScreen != null)
             {
-                BindEditableBoardScreen(bettingScreen, false);
+                predictionScreenController.BindEditable(bettingScreen);
             }
 
             if (shopScreen != null)
             {
-                BindEditableShopScreen(shopScreen);
+                shopScreenController.BindEditable(shopScreen);
             }
 
             if (raceScreen != null)
             {
-                BindEditableRaceScreen(raceScreen);
+                var raceController = phase == GamePhase.Results
+                    ? (ScreenController)resultsScreenController
+                    : raceScreenController;
+                raceController.BindEditable(raceScreen);
             }
 
             ApplyUiFontToHierarchy(productionRoot);
@@ -418,12 +395,14 @@ namespace Malatro
             ConfigureRaceScreenAsWorldHud(screen);
             SetEditableRaceInfo(screen, true, true);
             BuildRaceProgressMarkers();
+            EnsureEditableRaceSpeedControls(screen);
 
             var showingPodium = phase == GamePhase.Results;
             var recordsPanel = FindDeep(screen, "PodiumRecordsPanel");
             SetActive(recordsPanel, showingPodium);
             var progressPanel = FindDeep(screen, "RaceProgressPanel");
             SetActive(progressPanel, !showingPodium);
+            SetActive(FindDeep(screen, "RaceSpeedPanel"), !showingPodium);
             var resultButton = FindDeep(screen, "ResultButton");
             SetActive(resultButton, showingPodium);
             SetEditableText(screen, "RaceTitle", showingPodium
@@ -676,11 +655,14 @@ namespace Malatro
                         owned
                             ? $"[{L("owned")}] {relic.GetName(language == UiLanguage.Korean)}"
                             : relic.GetName(language == UiLanguage.Korean));
-                    SetEditableText(slot, "DescriptionText", relic.GetDescription(language == UiLanguage.Korean));
+                    EnsureEditableShopOfferDescription(
+                        slot,
+                        relic.GetDescription(language == UiLanguage.Korean));
                     SetEditableText(
                         slot,
                         "PriceText",
                         owned ? L("owned") : $"{L("buy")} {relic.Price:N0}");
+                    BindEditableButton(slot, null, null, () => ShowRelicModal(relic));
                     BindEditableButton(slot, "BuyButton", owned ? L("owned") : L("buy"), () =>
                     {
                         if (relicInventory.Contains(relic))
@@ -962,6 +944,9 @@ namespace Malatro
             }
             DecorateCard(card.gameObject, relic.Color, true);
             AddAccentBar(card.transform, relic.Color, 9f);
+            var cardButton = card.gameObject.AddComponent<Button>();
+            cardButton.targetGraphic = card;
+            cardButton.onClick.AddListener(() => ShowRelicModal(relic));
 
             var name = CreateText(
                 "Name",
@@ -973,7 +958,18 @@ namespace Malatro
                 FontStyles.Bold,
                 Ink,
                 TextAlignmentOptions.Center);
-            SetFixed(name.rectTransform, 20f, 72f, 260f, 64f);
+            SetFixed(name.rectTransform, 20f, 48f, 260f, 64f);
+
+            var description = CreateText(
+                "Description",
+                card.transform,
+                relic.GetDescription(language == UiLanguage.Korean),
+                15,
+                FontStyles.Normal,
+                Ink,
+                TextAlignmentOptions.Top);
+            description.textWrappingMode = TextWrappingModes.Normal;
+            SetFixed(description.rectTransform, 24f, 118f, 252f, 126f);
 
             var price = CreateText(
                 "Price",
@@ -983,11 +979,7 @@ namespace Malatro
                 FontStyles.Bold,
                 owned ? UiGreen : Ink,
                 TextAlignmentOptions.Center);
-            SetFixed(price.rectTransform, 20f, 154f, 260f, 42f);
-
-            var description = CreateText("Description", card.transform, relic.GetDescription(language == UiLanguage.Korean), 15, FontStyles.Normal, Ink, TextAlignmentOptions.Top);
-            description.textWrappingMode = TextWrappingModes.Normal;
-            SetFixed(description.rectTransform, 24f, 220f, 252f, 92f);
+            SetFixed(price.rectTransform, 20f, 258f, 260f, 42f);
 
             var buy = CreateBoardMiniButton("Buy", card.transform, owned ? L("owned") : L("buy"), () =>
             {
@@ -1068,7 +1060,7 @@ namespace Malatro
                 : offer.RandomTarget != null
                     ? GetHorseName(offer.RandomTarget)
                     : L("random_horse_offer");
-            return $"[{GetRarityName(offer.Rarity)}] {target} "
+            return $"{target} "
                 + $"{GetHorseStatName(offer.Stat)} {GetSignedStatAmount(offer.Amount)}";
         }
 
@@ -1120,7 +1112,7 @@ namespace Malatro
             ShowHorseStatOfferSelectionModal(offer);
         }
 
-        private void ShowHorseStatOfferSelectionModal(HorseStatShopOffer offer)
+        private void BuildHorseStatOfferSelectionModal(HorseStatShopOffer offer)
         {
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
@@ -1203,18 +1195,143 @@ namespace Malatro
             AddLayoutElement(raceClockText.gameObject, 230f, 62f, 0f);
             raceMessageText = CreateText("Message", controls, string.Empty, 15, FontStyles.Normal, UiMuted, TextAlignmentOptions.Center);
             AddLayoutElement(raceMessageText.gameObject, -1f, 62f, 1f);
-            foreach (var speed in new[] { 1f, 1.5f, 2f })
-            {
-                var capturedSpeed = speed;
-                var button = CreateButton($"Speed {speed}", controls, $"{speed:0.#}x", () =>
-                {
-                    racePlaybackSpeed = capturedSpeed;
-                    UpdateRaceCanvas();
-                }, UiSurfaceRaised, 16);
-                AddLayoutElement(button, 86f, 48f, 0f);
-            }
+            var speedButton = CreateButton(
+                "CycleSpeedButton",
+                controls,
+                GetRaceSpeedButtonLabel(),
+                CycleRacePlaybackSpeed,
+                UiSurfaceRaised,
+                16);
+            AddLayoutElement(speedButton, 126f, 48f, 0f);
+            var pauseButton = CreateButton(
+                "RacePauseButton",
+                controls,
+                GetRacePauseButtonLabel(),
+                ToggleRacePause,
+                UiSurfaceRaised,
+                16);
+            AddLayoutElement(pauseButton, 126f, 48f, 0f);
 
             UpdateRaceCanvas();
+        }
+
+        private void EnsureEditableRaceSpeedControls(Transform screen)
+        {
+            var panel = FindDeep(screen, "RaceSpeedPanel") as RectTransform;
+            if (panel == null)
+            {
+                var panelImage = CreateImage(
+                    "RaceSpeedPanel",
+                    screen,
+                    new Color(0.02f, 0.035f, 0.03f, 0.9f),
+                    true);
+                panel = panelImage.rectTransform;
+                DecorateCard(panel.gameObject, new Color(0.7f, 0.62f, 0.35f, 0.65f), false);
+            }
+
+            SetFixed(panel, 1480f, 28f, 300f, 88f);
+            SetActive(FindDeep(panel, "RaceSpeedLabel"), false);
+            for (var i = 1; i <= 3; i++)
+            {
+                SetActive(FindDeep(panel, $"RaceSpeed{i}Button"), false);
+            }
+
+            if (FindDeep(panel, "CycleSpeedButton") == null)
+            {
+                var speedButton = CreateButton(
+                    "CycleSpeedButton",
+                    panel,
+                    GetRaceSpeedButtonLabel(),
+                    CycleRacePlaybackSpeed,
+                    UiSurfaceRaised,
+                    16);
+                SetFixed(speedButton.GetComponent<RectTransform>(), 12f, 18f, 128f, 54f);
+            }
+
+            if (FindDeep(panel, "RacePauseButton") == null)
+            {
+                var pauseButton = CreateButton(
+                    "RacePauseButton",
+                    panel,
+                    GetRacePauseButtonLabel(),
+                    ToggleRacePause,
+                    UiSurfaceRaised,
+                    16);
+                SetFixed(pauseButton.GetComponent<RectTransform>(), 150f, 18f, 138f, 54f);
+            }
+
+            BindEditableButton(panel, "CycleSpeedButton", GetRaceSpeedButtonLabel(), CycleRacePlaybackSpeed);
+            BindEditableButton(panel, "RacePauseButton", GetRacePauseButtonLabel(), ToggleRacePause);
+            RefreshRaceControls(panel);
+        }
+
+        private void SetRacePlaybackSpeed(float speed)
+        {
+            racePlaybackSpeed = Mathf.Clamp(speed, 1f, 3f);
+            RefreshRaceControls(productionRoot);
+            UpdateRaceCanvas();
+        }
+
+        private void CycleRacePlaybackSpeed()
+        {
+            SetRacePlaybackSpeed(racePlaybackSpeed >= 3f ? 1f : racePlaybackSpeed + 1f);
+        }
+
+        private void ToggleRacePause()
+        {
+            racePaused = !racePaused;
+            RefreshRaceControls(productionRoot);
+            UpdateRaceCanvas();
+        }
+
+        private string GetRaceSpeedButtonLabel()
+        {
+            return $"{L("speed_control")} {racePlaybackSpeed:0}x";
+        }
+
+        private string GetRacePauseButtonLabel()
+        {
+            return racePaused ? "▶" : "⏸";
+        }
+
+        private void RefreshRaceControls(Transform panel)
+        {
+            if (panel == null)
+            {
+                return;
+            }
+
+            var speedButton = FindDeep(panel, "CycleSpeedButton");
+            if (speedButton != null)
+            {
+                var label = speedButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null)
+                {
+                    label.text = GetRaceSpeedButtonLabel();
+                }
+
+                var image = speedButton.GetComponent<Image>();
+                if (image != null)
+                {
+                    image.color = UiGold;
+                }
+            }
+
+            var pauseButton = FindDeep(panel, "RacePauseButton");
+            if (pauseButton != null)
+            {
+                var label = pauseButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (label != null)
+                {
+                    label.text = GetRacePauseButtonLabel();
+                }
+
+                var image = pauseButton.GetComponent<Image>();
+                if (image != null)
+                {
+                    image.color = racePaused ? UiGreen : CardPaper;
+                }
+            }
         }
 
         private void BuildResultsScreen()
@@ -1401,6 +1518,7 @@ namespace Malatro
             iconRect.pivot = new Vector2(0.5f, 0.5f);
             iconRect.sizeDelta = new Vector2(72f, 72f);
             iconRect.anchoredPosition = new Vector2(230f, 0f);
+            EnsureRaceIconManaBar(iconRect);
             raceHorseIcons[horse] = iconRect;
 
             var finish = CreateText("Finish", lane.transform, "FINISH", 11, FontStyles.Bold, UiGold, TextAlignmentOptions.Center);
@@ -1706,6 +1824,66 @@ namespace Malatro
             {
                 rankText.text = $"{rank + 1}";
             }
+
+            UpdateRaceIconManaBar(horse, icon);
+        }
+
+        private void EnsureRaceIconManaBar(RectTransform icon)
+        {
+            if (icon == null || FindDeep(icon, "ManaBar") != null)
+            {
+                return;
+            }
+
+            var background = CreateImage(
+                "ManaBar",
+                icon,
+                new Color(0.025f, 0.035f, 0.045f, 0.94f),
+                false);
+            var backgroundRect = background.rectTransform;
+            backgroundRect.anchorMin = new Vector2(0.5f, 0f);
+            backgroundRect.anchorMax = new Vector2(0.5f, 0f);
+            backgroundRect.pivot = new Vector2(0.5f, 0.5f);
+            backgroundRect.anchoredPosition = new Vector2(0f, -12f);
+            backgroundRect.sizeDelta = new Vector2(76f, 8f);
+
+            var fill = CreateImage(
+                "ManaFill",
+                backgroundRect,
+                new Color(0.25f, 0.72f, 1f, 1f),
+                false);
+            fill.rectTransform.anchorMin = Vector2.zero;
+            fill.rectTransform.anchorMax = Vector2.one;
+            fill.rectTransform.pivot = new Vector2(0f, 0.5f);
+            fill.rectTransform.offsetMin = new Vector2(2f, 2f);
+            fill.rectTransform.offsetMax = new Vector2(-2f, -2f);
+        }
+
+        private void UpdateRaceIconManaBar(Horse horse, RectTransform icon)
+        {
+            if (horse == null || icon == null)
+            {
+                return;
+            }
+
+            EnsureRaceIconManaBar(icon);
+            var fill = FindDeep(icon, "ManaFill") as RectTransform;
+            if (fill == null)
+            {
+                return;
+            }
+
+            var maximum = GetManaCost(horse);
+            var amount = Mathf.Clamp01(horse.Mana / Mathf.Max(1f, maximum));
+            fill.anchorMax = new Vector2(amount, 1f);
+            fill.offsetMax = new Vector2(-2f, -2f);
+            var image = fill.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = amount >= 0.999f
+                    ? UiGold
+                    : new Color(0.25f, 0.72f, 1f, 1f);
+            }
         }
 
         private void UpdateRaceFinishMarker(float trackLength, float leaderDistance, float bend)
@@ -1848,7 +2026,7 @@ namespace Malatro
             return remaining <= 400f ? "last straight" : "straight";
         }
 
-        private void ShowHorseModal(Horse horse)
+        private void BuildHorseModalLegacy(Horse horse)
         {
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
@@ -1878,13 +2056,14 @@ namespace Malatro
             AddLayoutElement(close, -1f, 46f, 0f);
         }
 
-        private void ShowRelicModal(RelicData relic)
+        private void BuildRelicModalLegacy(RelicData relic)
         {
-            if (relic == null || !relicInventory.Contains(relic))
+            if (relic == null)
             {
                 return;
             }
 
+            var owned = relicInventory.Contains(relic);
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
             var modal = CreateModalPanel("Relic Detail", 620f, 620f);
@@ -1931,7 +2110,7 @@ namespace Malatro
             var prices = CreateText(
                 "Prices",
                 modal,
-                $"{L("buy")} {relic.Price:N0}    {L("sell")} +{relic.SellPrice:N0}",
+                owned ? $"{L("sell")} +{relic.SellPrice:N0}" : $"{L("buy")} {relic.Price:N0}",
                 18,
                 FontStyles.Bold,
                 UiGold,
@@ -1949,28 +2128,52 @@ namespace Malatro
                 17);
             AddLayoutElement(close, -1f, 50f, 1f);
 
-            var sell = CreateButton(
-                "Sell",
-                actions,
-                $"{L("sell")} +{relic.SellPrice:N0}",
-                () =>
-                {
-                    if (!relicInventory.Contains(relic))
+            if (owned)
+            {
+                var sell = CreateButton(
+                    "Sell",
+                    actions,
+                    $"{L("sell")} +{relic.SellPrice:N0}",
+                    () =>
                     {
-                        ClearChildren(modalRoot);
-                        return;
-                    }
+                        if (!relicInventory.Contains(relic))
+                        {
+                            ClearChildren(modalRoot);
+                            return;
+                        }
 
-                    SellRelic(relic);
-                    ClearChildren(modalRoot);
-                    MarkUiDirty();
-                },
-                UiRed,
-                17);
-            AddLayoutElement(sell, -1f, 50f, 1f);
+                        SellRelic(relic);
+                        ClearChildren(modalRoot);
+                        MarkUiDirty();
+                    },
+                    UiRed,
+                    17);
+                AddLayoutElement(sell, -1f, 50f, 1f);
+            }
+            else
+            {
+                var buy = CreateButton(
+                    "Buy",
+                    actions,
+                    $"{L("buy")} {relic.Price:N0}",
+                    () =>
+                    {
+                        BuyRelic(relic);
+                        if (!relicInventory.Contains(relic))
+                        {
+                            return;
+                        }
+
+                        ClearChildren(modalRoot);
+                        MarkUiDirty();
+                    },
+                    UiGreen,
+                    17);
+                AddLayoutElement(buy, -1f, 50f, 1f);
+            }
         }
 
-        private void ShowTicketTypeModal(BetTicket ticket)
+        private void BuildTicketTypeModal(BetTicket ticket)
         {
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
@@ -1999,7 +2202,7 @@ namespace Malatro
             }
         }
 
-        private void ShowTicketHorseModal(BetTicket ticket, bool secondTarget)
+        private void BuildTicketHorseModal(BetTicket ticket, bool secondTarget)
         {
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
@@ -2057,56 +2260,22 @@ namespace Malatro
 
         private static RectTransform CreateRect(string name, Transform parent)
         {
-            var gameObject = new GameObject(name, typeof(RectTransform));
-            var rect = gameObject.GetComponent<RectTransform>();
-            rect.SetParent(parent, false);
-            return rect;
+            return activeUiFactory.CreateRect(name, parent);
         }
 
         private static Image CreateImage(string name, Transform parent, Color color, bool raycastTarget)
         {
-            var rect = CreateRect(name, parent);
-            var image = rect.gameObject.AddComponent<Image>();
-            image.color = color;
-            image.raycastTarget = raycastTarget;
-            return image;
+            return activeUiFactory.CreateImage(name, parent, color, raycastTarget);
         }
 
         private TextMeshProUGUI CreateText(string name, Transform parent, string text, int size, FontStyles style, Color color, TextAlignmentOptions alignment)
         {
-            var rect = CreateRect(name, parent);
-            var label = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            ApplyUiFont(label);
-            label.text = text;
-            label.fontSize = size;
-            label.fontSizeMax = size;
-            label.fontSizeMin = Mathf.Max(10f, size * 0.65f);
-            label.enableAutoSizing = true;
-            label.fontStyle = FontStyles.Normal;
-            label.color = color;
-            label.alignment = alignment;
-            label.raycastTarget = false;
-            label.overflowMode = TextOverflowModes.Truncate;
-            return label;
+            return uiFactory.CreateText(name, parent, text, size, style, color, alignment);
         }
 
         private GameObject CreateButton(string name, Transform parent, string label, Action action, Color color, int fontSize)
         {
-            var image = CreateImage(name, parent, color, true);
-            var button = image.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            var colors = button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(1.08f, 1.08f, 1.08f, 1f);
-            colors.pressedColor = new Color(0.82f, 0.82f, 0.82f, 1f);
-            colors.disabledColor = new Color(0.42f, 0.42f, 0.42f, 0.7f);
-            button.colors = colors;
-            button.onClick.AddListener(() => action());
-
-            var text = CreateText("Label", image.transform, label, fontSize, FontStyles.Bold, UiText, TextAlignmentOptions.Center);
-            Stretch(text.rectTransform);
-            text.margin = new Vector4(8f, 4f, 8f, 4f);
-            return image.gameObject;
+            return uiFactory.CreateButton(name, parent, label, action, color, fontSize);
         }
 
         private GameObject CreateWhiteButton(string name, Transform parent, string label, Action action, float labelHeight, int fontSize)
@@ -2195,120 +2364,43 @@ namespace Malatro
             float paddingLeft,
             float paddingRight)
         {
-            var root = CreateRect(name, parent);
-            SetFixed(root, x, y, width, height);
-
-            var rootImage = root.gameObject.AddComponent<Image>();
-            rootImage.color = new Color(0.04f, 0.08f, 0.14f, 0.16f);
-            rootImage.raycastTarget = true;
-            var rootOutline = root.gameObject.AddComponent<Outline>();
-            rootOutline.effectColor = new Color(1f, 1f, 1f, 0.08f);
-            rootOutline.effectDistance = new Vector2(1f, -1f);
-
-            var scrollRect = root.gameObject.AddComponent<ScrollRect>();
-            scrollRect.horizontal = true;
-            scrollRect.vertical = false;
-            scrollRect.movementType = ScrollRect.MovementType.Clamped;
-            scrollRect.inertia = true;
-            scrollRect.scrollSensitivity = 42f;
-
-            var viewport = CreateRect("Viewport", root);
-            Stretch(viewport);
-            viewport.gameObject.AddComponent<RectMask2D>();
-
-            var content = CreateRect("Content", viewport);
-            content.anchorMin = new Vector2(0f, 0f);
-            content.anchorMax = new Vector2(0f, 1f);
-            content.pivot = new Vector2(0f, 0.5f);
-            content.anchoredPosition = Vector2.zero;
-            content.sizeDelta = new Vector2(3600f, 0f);
-
-            var layout = content.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = new RectOffset(Mathf.RoundToInt(paddingLeft), Mathf.RoundToInt(paddingRight), 0, 0);
-            layout.spacing = spacing;
-            layout.childAlignment = TextAnchor.MiddleLeft;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = false;
-
-            scrollRect.viewport = viewport;
-            scrollRect.content = content;
-            return content;
+            return activeUiFactory.CreateHorizontalScrollView(
+                name, parent, x, y, width, height, spacing, paddingLeft, paddingRight);
         }
 
         private static RectTransform CreateVerticalLayout(string name, Transform parent, float spacing, RectOffset padding)
         {
-            var rect = CreateRect(name, parent);
-            Stretch(rect);
-            var layout = rect.gameObject.AddComponent<VerticalLayoutGroup>();
-            layout.padding = padding;
-            layout.spacing = spacing;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = true;
-            layout.childForceExpandHeight = false;
-            return rect;
+            return activeUiFactory.CreateVerticalLayout(name, parent, spacing, padding);
         }
 
         private static RectTransform CreateHorizontalLayout(string name, Transform parent, float spacing, RectOffset padding)
         {
-            var rect = CreateRect(name, parent);
-            var layout = rect.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.padding = padding;
-            layout.spacing = spacing;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = true;
-            layout.childAlignment = TextAnchor.MiddleLeft;
-            return rect;
+            return activeUiFactory.CreateHorizontalLayout(name, parent, spacing, padding);
         }
 
         private static void AddLayoutElement(GameObject gameObject, float preferredWidth, float preferredHeight, float flexibleWidth)
         {
-            var element = gameObject.GetComponent<LayoutElement>() ?? gameObject.AddComponent<LayoutElement>();
-            if (preferredWidth >= 0f)
-            {
-                element.preferredWidth = preferredWidth;
-            }
-            if (preferredHeight >= 0f)
-            {
-                element.preferredHeight = preferredHeight;
-            }
-            element.flexibleWidth = flexibleWidth;
+            MalatroUiFactory.AddLayoutElement(gameObject, preferredWidth, preferredHeight, flexibleWidth);
         }
 
         private static void CreateFlexibleSpacer(Transform parent)
         {
-            var spacer = CreateRect("Spacer", parent);
-            var element = spacer.gameObject.AddComponent<LayoutElement>();
-            element.flexibleWidth = 1f;
+            activeUiFactory.CreateFlexibleSpacer(parent);
         }
 
         private static void Stretch(RectTransform rect)
         {
-            rect.anchorMin = Vector2.zero;
-            rect.anchorMax = Vector2.one;
-            rect.offsetMin = Vector2.zero;
-            rect.offsetMax = Vector2.zero;
+            MalatroUiFactory.Stretch(rect);
         }
 
         private static void SetAnchors(RectTransform rect, Vector2 anchorMin, Vector2 anchorMax, Vector2 anchoredPosition, Vector2 sizeDelta)
         {
-            rect.anchorMin = anchorMin;
-            rect.anchorMax = anchorMax;
-            rect.anchoredPosition = anchoredPosition;
-            rect.sizeDelta = sizeDelta;
+            MalatroUiFactory.SetAnchors(rect, anchorMin, anchorMax, anchoredPosition, sizeDelta);
         }
 
         private static void SetFixed(RectTransform rect, float x, float y, float width, float height)
         {
-            rect.anchorMin = new Vector2(0f, 1f);
-            rect.anchorMax = new Vector2(0f, 1f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = new Vector2(x, -y);
-            rect.sizeDelta = new Vector2(width, height);
+            MalatroUiFactory.SetFixed(rect, x, y, width, height);
         }
 
         private static Vector2 GetGridPosition(int index, float startX, float startY, int columns, float itemWidth, float itemHeight, float gapX, float gapY)
@@ -2403,6 +2495,41 @@ namespace Malatro
             ApplyUiFont(label);
             label.fontStyle = FontStyles.Normal;
             label.text = value;
+        }
+
+        private void EnsureEditableShopOfferDescription(Transform slot, string value)
+        {
+            var target = FindDeep(slot, "DescriptionText");
+            TextMeshProUGUI label;
+            if (target == null)
+            {
+                label = CreateText(
+                    "DescriptionText",
+                    slot,
+                    value,
+                    15,
+                    FontStyles.Normal,
+                    Ink,
+                    TextAlignmentOptions.Top);
+            }
+            else
+            {
+                label = target.GetComponent<TextMeshProUGUI>()
+                    ?? target.GetComponentInChildren<TextMeshProUGUI>(true);
+            }
+
+            if (label == null)
+            {
+                return;
+            }
+
+            ApplyUiFont(label);
+            label.text = value;
+            label.color = Ink;
+            label.fontSize = 15f;
+            label.textWrappingMode = TextWrappingModes.Normal;
+            label.raycastTarget = false;
+            SetFixed(label.rectTransform, 24f, 118f, 252f, 126f);
         }
 
         private void ApplyUiFontToHierarchy(Transform root)
@@ -2526,9 +2653,21 @@ namespace Malatro
             }
 
             image.sprite = GetHorsePortraitSprite(horse);
+            image.SetNativeSize();
             image.color = Color.white;
             image.preserveAspect = true;
             image.raycastTarget = false;
+            RectTransform rect = image.GetComponent<RectTransform>();
+
+            // Anchor를 가운데로
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+
+            // Pivot도 가운데로
+            rect.pivot = new Vector2(0.5f, 0.5f);
+
+            // 위치를 부모 기준 가운데로
+            rect.anchoredPosition = Vector2.zero;
         }
 
         private static Sprite GetHorsePortraitSprite(Horse horse)

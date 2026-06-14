@@ -5,21 +5,28 @@ using UnityEngine;
 
 namespace Malatro.Editor
 {
-    [InitializeOnLoad]
     // 기본 유물 에셋과 Resources 데이터베이스가 항상 존재하도록 에디터에서 자동 복구한다.
     public static class RelicDatabaseGenerator
     {
         private const string DataFolder = "Assets/GameData/Relics";
         private const string DatabasePath = "Assets/Resources/RelicDatabase.asset";
 
-        static RelicDatabaseGenerator()
-        {
-            EditorApplication.delayCall += CreateDefaultDatabaseIfMissing;
-        }
-
         [MenuItem("Malatro/Database/Create or Repair Default Relic Database")]
         public static void CreateDefaultDatabaseIfMissing()
         {
+            var probe = ScriptableObject.CreateInstance<RelicData>();
+            var relicScriptAvailable = probe != null && MonoScript.FromScriptableObject(probe) != null;
+            if (probe != null)
+            {
+                Object.DestroyImmediate(probe);
+            }
+
+            if (!relicScriptAvailable)
+            {
+                Debug.LogWarning("RelicData script is unavailable. Relic database repair was skipped.");
+                return;
+            }
+
             EnsureFolder("Assets/GameData");
             EnsureFolder(DataFolder);
             EnsureFolder("Assets/Resources");
@@ -48,17 +55,39 @@ namespace Malatro.Editor
                     AssetDatabase.CreateAsset(relic, path);
                 }
 
-                if (!database.Relics.Contains(relic))
+                relic = AssetDatabase.LoadAssetAtPath<RelicData>(path);
+                if (relic != null && !database.Relics.Contains(relic))
                 {
                     database.Relics.Add(relic);
                 }
-                EditorUtility.SetDirty(relic);
+                if (relic != null)
+                {
+                    EditorUtility.SetDirty(relic);
+                }
             }
 
-            database.Relics.RemoveAll(relic => relic == null);
+            SyncRelicDatabase(database);
             EditorUtility.SetDirty(database);
             Object.DestroyImmediate(defaults);
             AssetDatabase.SaveAssets();
+        }
+
+        private static void SyncRelicDatabase(RelicDatabase database)
+        {
+            database.Relics.Clear();
+            var guids = AssetDatabase.FindAssets("t:RelicData", new[] { DataFolder });
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var relic = AssetDatabase.LoadAssetAtPath<RelicData>(path);
+                if (relic != null)
+                {
+                    database.Relics.Add(relic);
+                }
+            }
+
+            database.Relics.Sort((left, right) =>
+                string.Compare(left.Id, right.Id, System.StringComparison.Ordinal));
         }
 
         private static void Copy(RelicData source, RelicData target)

@@ -7,7 +7,7 @@ namespace Malatro
     {
         private const int TrackSegments = 48;
         private const float CameraFocusX = 0.5f;
-        private const float RaceHorseScale = 1.3f;
+        private const float RaceHorseScale = 1.4f;
 
         private readonly List<LineRenderer> laneLines = new();
         private Transform horseLayer;
@@ -107,6 +107,7 @@ namespace Malatro
 
         public void UpdateView(
             IReadOnlyList<Horse> horses,
+            Horse trackedHorse,
             float focusDistance,
             float viewDistance,
             float trackLength,
@@ -125,11 +126,21 @@ namespace Malatro
             var width = right - left;
             var trackCenterY = -0.45f;
             var trackHalfHeight = Mathf.Min(2.7f, halfHeight * 0.42f);
+            if (trackedHorse != null)
+            {
+                var trackedLaneY = Mathf.Lerp(
+                    trackHalfHeight * 0.82f,
+                    -trackHalfHeight * 0.82f,
+                    trackedHorse.LaneOffset);
+                var trackedCurveY = GetCurveOffset(CameraFocusX, bend, halfHeight);
+                trackCenterY = -trackedLaneY - trackedCurveY;
+            }
 
             SetRaceCourseVisible(true);
             podium.gameObject.SetActive(false);
             ScaleSpriteToCamera(background, halfWidth, halfHeight);
             ScaleSpriteToCamera(pathOverlay, halfWidth, halfHeight);
+            pathOverlay.transform.localPosition = new Vector3(0f, trackCenterY + 0.45f, 0f);
 
             UpdateCurveLine(trackSurface, left, right, trackCenterY, bend, halfHeight, 0f);
             UpdateCurveLine(routeLine, left, right, trackCenterY, bend, halfHeight, 0f);
@@ -323,13 +334,34 @@ namespace Malatro
 
         private static float GetCurveOffset(float normalizedX, float bend, float halfHeight)
         {
-            var centered = normalizedX * 2f - 1f;
-            return (1f - centered * centered) * bend * halfHeight * 0.28f;
+            // Keep the curve monotonic so it reads as a turn, but do not flatten
+            // the screen edges. If the edge slope is 0, the last part of the track
+            // becomes horizontal and feels detached from the ongoing corner.
+            var curve = GetTurnCurve(normalizedX);
+            return curve * bend * halfHeight * 0.28f;
         }
 
         private static float GetCurveSlope(float normalizedX, float bend)
         {
-            return -4f * (normalizedX - 0.5f) * bend;
+            return GetTurnCurveSlope(normalizedX) * bend;
+        }
+
+        private static float GetTurnCurve(float normalizedX)
+        {
+            const float edgeSlope = 1;
+            var u = Mathf.Clamp01(normalizedX) * 2f - 1f;
+            var a = (edgeSlope - 1f) * 0.5f;
+            var b = (3f - edgeSlope) * 0.5f;
+            return u * (b + a * u * u);
+        }
+
+        private static float GetTurnCurveSlope(float normalizedX)
+        {
+            const float edgeSlope = 1f;
+            var u = Mathf.Clamp01(normalizedX) * 2f - 1f;
+            var a = (edgeSlope - 1f) * 0.5f;
+            var b = (3f - edgeSlope) * 0.5f;
+            return 2f * (b + 3f * a * u * u);
         }
     }
 }

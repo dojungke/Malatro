@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: national-light
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: national-light
+  EnglishName: "\uFF62National Light\uFF63"
+  KoreanName: "\uFF62\uBE5B \uD558\uB298\uC5D0\uC11C \uB0B4\uB824\uC624\uB9AC\uFF63"
+  EnglishDescription: "Manifest \u300Eright blue\u300F, increasing Speed and Acceleration
+    by 3."
+  KoreanDescription: "\u300E\uD558\uB298\uD558\uB298\u300F\uC744 \uD604\uD604\uD558\uC5EC
+    \uC18D\uB3C4\uC640 \uAC00\uC18D\uB3C4\uB97C 3 \uC99D\uAC00\uC2DC\uD0A8\uB2E4.\n"
+  ManaCost: 100
+  Cooldown: 0
+  EffectDuration: 1.4
+  RetainedMana: 0
+  EffectType: 11
+  SpeedBoost: 3
+  AccelerationBoost: 3
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  ChargeDistanceMeters: 0
+  StunDuration: 0
+  TimeStopDuration: 0
+  BonusPerHorseAhead: 0.25
+  AreaRadiusMeters: 0
+  SpeedReductionRatio: 0
+  DebuffDuration: 0
+  EffectColor: {r: 1, g: 0.9, b: 0.35, a: 1}
+  Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 2800000, guid: 3b8c5ddbc08e9044c99fc1ffe19aacb0, type: 3}

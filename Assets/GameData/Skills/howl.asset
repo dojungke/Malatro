@@ -15,8 +15,10 @@ MonoBehaviour:
   Id: howl
   EnglishName: Howl
   KoreanName: "\uC6B8\uBD80\uC9D6\uAE30"
-  EnglishDescription: Reduce the speed of other horses within 100 meters by 30% for 3 seconds.
-  KoreanDescription: "\uBC18\uACBD 100\uBBF8\uD130 \uB0B4\uC758 \uB2E4\uB978 \uB9D0\uC758 \uC18D\uB3C4\uB97C 3\uCD08 \uB3D9\uC548 30% \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
+  EnglishDescription: Reduce the speed of other horses within 100 meters by 30% for
+    3 seconds.
+  KoreanDescription: "\uBC18\uACBD 100\uBBF8\uD130 \uB0B4\uC758 \uB2E4\uB978 \uB9D0\uC758
+    \uC18D\uB3C4\uB97C 3\uCD08 \uB3D9\uC548 30% \uAC10\uC18C\uC2DC\uD0B5\uB2C8\uB2E4."
   ManaCost: 100
   Cooldown: 1.2
   EffectDuration: 1.4
@@ -36,3 +38,4 @@ MonoBehaviour:
   DebuffDuration: 3
   EffectColor: {r: 0.5, g: 0.72, b: 1, a: 1}
   Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 0}

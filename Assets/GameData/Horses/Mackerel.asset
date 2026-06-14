@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uACE0\uB4F1\uC5B4"
   EnglishShortName: Mackerel
   KoreanShortName: "\uACE0\uB4F1\uC5B4"
+  EnglishDescription: It is a higher organism.
+  KoreanDescription: "\uACE0\uB4F1\uC0DD\uBB3C\uC785\uB2C8\uB2E4."
   Tags:
   - "\uB3D9\uBB3C"
   - "\uBAA8\uD5D8\uAC00"
@@ -31,7 +33,7 @@ MonoBehaviour:
     Max: 13
   Magic:
     Min: 8
-    Max: 18
+    Max: 15
   TurfAptitude: 6
   DirtAptitude: 6
   OpeningOddsRange: {x: 1.8, y: 7.5}

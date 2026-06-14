@@ -5,18 +5,12 @@ using UnityEngine;
 
 namespace Malatro.Editor
 {
-    [InitializeOnLoad]
     // 프로젝트를 열 때 기본 말/스킬 에셋이 없으면 생성하고 기존 데이터를 현재 형식으로 보정한다.
     public static class HorseDatabaseGenerator
     {
         private const string DataFolder = "Assets/GameData/Horses";
         private const string SkillFolder = "Assets/GameData/Skills";
         private const string DatabasePath = "Assets/Resources/HorseDatabase.asset";
-
-        static HorseDatabaseGenerator()
-        {
-            EditorApplication.delayCall += CreateDefaultDatabaseIfMissing;
-        }
 
         [MenuItem("Malatro/Database/Create or Repair Default Horse Database")]
         public static void CreateDefaultDatabaseIfMissing()
@@ -36,11 +30,35 @@ namespace Malatro.Editor
                 new HorseSeed("iron-clover", "Iron Clover", "아이언 클로버", "Clover", "클로버", "ram-run", "lightning-start")
             };
 
+            var requiredSkillIds = new[]
+            {
+                "lightning-start",
+                "wind-step",
+                "second-wind",
+                "mana-surge",
+                "iron-rhythm",
+                "late-charge",
+                "howl",
+                "leap",
+                "trip-up"
+            };
+            foreach (var skillId in requiredSkillIds)
+            {
+                LoadOrCreateSkill(skillId);
+            }
+
             var database = AssetDatabase.LoadAssetAtPath<HorseDatabase>(DatabasePath);
+            if (database != null)
+            {
+                database.Horses ??= new System.Collections.Generic.List<HorseData>();
+                database.Horses.RemoveAll(horse => horse == null);
+            }
+
             if (database != null && database.Horses != null && database.Horses.Count > 0)
             {
                 MigrateExistingHorseSkills(database);
                 AssignCustomHorseSkills(database);
+                SyncHorseDatabase(database);
                 EditorUtility.SetDirty(database);
                 AssetDatabase.SaveAssets();
                 return;
@@ -60,6 +78,7 @@ namespace Malatro.Editor
             {
                 var seed = defaults[i];
                 var assetPath = $"{DataFolder}/{seed.Id}.asset";
+                var skill = LoadOrCreateSkill(seed.SkillId);
                 var data = AssetDatabase.LoadAssetAtPath<HorseData>(assetPath);
                 if (data == null)
                 {
@@ -81,18 +100,45 @@ namespace Malatro.Editor
                     AssetDatabase.CreateAsset(data, assetPath);
                 }
 
-                data.SkillData = LoadOrCreateSkill(seed.SkillId);
+                data = AssetDatabase.LoadAssetAtPath<HorseData>(assetPath);
+                if (data == null)
+                {
+                    Debug.LogWarning($"Horse asset could not be loaded after creation: {assetPath}");
+                    continue;
+                }
+
+                data.SkillData = skill;
                 if (!database.Horses.Contains(data))
                 {
                     database.Horses.Add(data);
                 }
-                EditorUtility.SetDirty(data);
+
+                MarkAssetDirty<HorseData>(assetPath);
             }
 
             EditorUtility.SetDirty(database);
             MigrateExistingHorseSkills(database);
             AssignCustomHorseSkills(database);
+            SyncHorseDatabase(database);
             AssetDatabase.SaveAssets();
+        }
+
+        private static void SyncHorseDatabase(HorseDatabase database)
+        {
+            database.Horses.Clear();
+            var guids = AssetDatabase.FindAssets("t:HorseData", new[] { DataFolder });
+            foreach (var guid in guids)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                var horse = AssetDatabase.LoadAssetAtPath<HorseData>(path);
+                if (horse != null)
+                {
+                    database.Horses.Add(horse);
+                }
+            }
+
+            database.Horses.Sort((left, right) =>
+                string.Compare(left.Id, right.Id, System.StringComparison.Ordinal));
         }
 
         private static void AssignCustomHorseSkills(HorseDatabase database)
@@ -155,8 +201,30 @@ namespace Malatro.Editor
             }
 
             skill = HorseDatabase.CreateRuntimeSkill(id);
+            if (skill == null || MonoScript.FromScriptableObject(skill) == null)
+            {
+                if (skill != null)
+                {
+                    Object.DestroyImmediate(skill);
+                }
+
+                Debug.LogWarning($"HorseSkillData script is unavailable. Skill asset creation was skipped: {id}");
+                return null;
+            }
+
             AssetDatabase.CreateAsset(skill, path);
             return skill;
+        }
+
+        private static void MarkAssetDirty<T>(string assetPath) where T : UnityEngine.Object
+        {
+            var asset = AssetDatabase.LoadAssetAtPath<T>(assetPath);
+            if (asset == null || !AssetDatabase.Contains(asset))
+            {
+                return;
+            }
+
+            EditorUtility.SetDirty(asset);
         }
 
         private static void EnsureFolder(string path)

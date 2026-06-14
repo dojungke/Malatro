@@ -13,6 +13,9 @@ namespace Malatro
         private LineRenderer outerRing;
         private LineRenderer crosshair;
         private TextMesh statusText;
+        private Transform manaBarRoot;
+        private SpriteRenderer manaBarBackground;
+        private SpriteRenderer manaBarFill;
         private float previousSkillTimer;
         private float skillBurstClock;
         private Color baseHorseColor = Color.white;
@@ -54,6 +57,17 @@ namespace Malatro
             statusText.fontStyle = FontStyle.Bold;
             statusText.color = Color.clear;
             statusText.GetComponent<MeshRenderer>().sortingOrder = 18;
+
+            manaBarRoot = new GameObject("Mana Bar").transform;
+            manaBarRoot.SetParent(transform, false);
+            manaBarRoot.localPosition = new Vector3(0f, -0.68f, 0f);
+            var barSprite = CreateBarSprite();
+            manaBarBackground = CreateSprite("Mana Bar Background", barSprite, 19, manaBarRoot);
+            manaBarBackground.color = new Color(0.025f, 0.035f, 0.045f, 0.94f);
+            manaBarBackground.transform.localScale = new Vector3(1.04f, 0.38f, 1f);
+            manaBarFill = CreateSprite("Mana Bar Fill", barSprite, 20, manaBarRoot);
+            manaBarFill.color = new Color(0.25f, 0.72f, 1f, 1f);
+            manaBarFill.transform.localScale = new Vector3(0.001f, 0.24f, 1f);
         }
 
         public void UpdateEffects(Horse horse)
@@ -87,6 +101,25 @@ namespace Malatro
             UpdateTimeStop(timeStopped);
             UpdateSkill(horse, skillActive, stunned || timeStopped);
             UpdateStatusText(horse, stunned, timeStopped, slowed, skillActive);
+            UpdateManaBar(horse);
+        }
+
+        private void UpdateManaBar(Horse horse)
+        {
+            if (manaBarRoot == null || manaBarFill == null)
+            {
+                return;
+            }
+
+            var maximum = horse.Skill != null ? Mathf.Max(1f, horse.Skill.ManaCost) : 100f;
+            var fill = Mathf.Clamp01(horse.Mana / maximum);
+            const float width = 0.98f;
+            manaBarRoot.rotation = Quaternion.identity;
+            manaBarFill.transform.localScale = new Vector3(Mathf.Max(0.001f, width * fill), 0.24f, 1f);
+            manaBarFill.transform.localPosition = new Vector3(-width * (1f - fill) * 0.5f, 0f, 0f);
+            manaBarFill.color = fill >= 0.999f
+                ? new Color(1f, 0.78f, 0.18f, 1f)
+                : new Color(0.25f, 0.72f, 1f, 1f);
         }
 
         private void UpdateStun(bool active)
@@ -286,8 +319,17 @@ namespace Malatro
 
         private SpriteRenderer CreateSprite(string objectName, Sprite sprite, int sortingOrder)
         {
+            return CreateSprite(objectName, sprite, sortingOrder, transform);
+        }
+
+        private static SpriteRenderer CreateSprite(
+            string objectName,
+            Sprite sprite,
+            int sortingOrder,
+            Transform parent)
+        {
             var child = new GameObject(objectName);
-            child.transform.SetParent(transform, false);
+            child.transform.SetParent(parent, false);
             var renderer = child.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
             renderer.sortingOrder = sortingOrder;
@@ -363,6 +405,32 @@ namespace Malatro
             }
             texture.Apply();
             return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        private static Sprite CreateBarSprite()
+        {
+            const int width = 32;
+            const int height = 8;
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = "Horse Mana Bar",
+                filterMode = FilterMode.Bilinear
+            };
+
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    texture.SetPixel(x, y, Color.white);
+                }
+            }
+
+            texture.Apply();
+            return Sprite.Create(
+                texture,
+                new Rect(0f, 0f, width, height),
+                new Vector2(0.5f, 0.5f),
+                width);
         }
     }
 }

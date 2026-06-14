@@ -17,6 +17,9 @@ MonoBehaviour:
   KoreanName: "\uC232 \uC800\uACA9\uC218"
   EnglishShortName: sinper
   KoreanShortName: "\uC800\uACA9\uC218"
+  EnglishDescription: They tried to register a bullet as a competitor, but failed.
+  KoreanDescription: "\uCD1D\uC54C\uC744 \uC120\uC218\uB4F1\uB85D \uD558\uB824\uB2E4
+    \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4."
   Tags:
   - "\uB9C8\uC871"
   - "\uC554\uC0B4\uC790"
@@ -33,7 +36,7 @@ MonoBehaviour:
     Min: 8
     Max: 18
   TurfAptitude: 0
-  DirtAptitude: 6
+  DirtAptitude: 5
   OpeningOddsRange: {x: 1.8, y: 7.5}
   RunSheet: {fileID: 2800000, guid: 3f83cf79f5ed9b8419e7bebd38c8b9fe, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}
