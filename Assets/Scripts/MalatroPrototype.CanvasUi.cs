@@ -281,14 +281,25 @@ namespace Malatro
             var bettingScreen = FindDirect(productionRoot, "BettingScreen");
             var shopScreen = FindDirect(productionRoot, "ShopScreen");
             var raceScreen = FindDirect(productionRoot, "RaceScreen");
+            var gameOverScreen = FindDirect(productionRoot, "GameOverScreen");
+            var gameSetupScreen = FindDirect(productionRoot, "GameSetupScreen");
 
+            var showGameSetup = phase == GamePhase.GameSetup;
             var showBetting = phase == GamePhase.Betting;
             var showShop = phase == GamePhase.Shop;
             var showRace = phase == GamePhase.Racing || phase == GamePhase.Results;
+            var showGameOver = phase == GamePhase.GameOver;
 
+            SetActive(gameSetupScreen, showGameSetup);
             SetActive(bettingScreen, showBetting);
             SetActive(shopScreen, showShop);
             SetActive(raceScreen, showRace);
+            SetActive(gameOverScreen, showGameOver);
+
+            if (gameSetupScreen != null)
+            {
+                gameSetupScreenController.BindEditable(gameSetupScreen);
+            }
 
             if (bettingScreen != null)
             {
@@ -308,7 +319,65 @@ namespace Malatro
                 raceController.BindEditable(raceScreen);
             }
 
+            if (gameOverScreen != null)
+            {
+                gameOverScreenController.BindEditable(gameOverScreen);
+            }
+
             ApplyUiFontToHierarchy(productionRoot);
+        }
+
+        private void BindEditableGameOverScreen(Transform screen)
+        {
+            SetEditableText(screen, "GameOverTitle", L("game_over_title"));
+            SetEditableText(screen, "GameOverSubtitle", GetLog());
+            SetEditableText(screen, "ClearStatusLabel", L("game_clear_status"));
+            SetEditableText(screen, "ClearStatusValue", gameCleared ? L("clear_success") : L("clear_failed"));
+            SetEditableText(screen, "ReachedRoundLabel", L("reached_round"));
+            SetEditableText(screen, "ReachedRoundValue", $"{roundNumber:N0}");
+            SetEditableText(screen, "BestRaceGoldLabel", L("best_race_gold"));
+            SetEditableText(screen, "BestRaceGoldValue", $"{bestRaceEarnedGold:N0}");
+            SetEditableText(screen, "OwnedGoldLabel", L("owned_gold"));
+            SetEditableText(screen, "OwnedGoldValue", $"{gold:N0}");
+            SetEditableText(screen, "TargetGoldLabel", L("target_gold"));
+            SetEditableText(screen, "TargetGoldValue", $"{roundTargetGold:N0}");
+            SetEditableText(screen, "EarnedGoldLabel", L("earned_gold"));
+            SetEditableText(screen, "EarnedGoldValue", $"{roundEarnedGold:N0}");
+            SetEditableText(screen, "TotalEarnedGoldLabel", L("total_earned_gold"));
+            SetEditableText(screen, "TotalEarnedGoldValue", $"{totalEarnedGold:N0}");
+
+            var clearValue = FindDeep(screen, "ClearStatusValue")?.GetComponent<TextMeshProUGUI>();
+            if (clearValue != null)
+            {
+                clearValue.color = gameCleared ? UiGreen : UiRed;
+            }
+
+            BindEditableButton(screen, "NewRunButton", L("new_run"), () =>
+            {
+                OpenGameSetup();
+                MarkUiDirty();
+            });
+        }
+
+        private void BindEditableGameSetupScreen(Transform screen)
+        {
+            SetEditableText(screen, "SetupTitle", L("game_setup_title"));
+            SetEditableText(screen, "SetupHint", L("game_setup_hint"));
+            SetEditableText(screen, "AbilityLabel", L("special_ability"));
+            SetEditableText(screen, "AbilityName", GetSpecialAbilityName());
+            SetEditableText(screen, "AbilityDescription", GetSpecialAbilityDescription());
+            SetEditableText(screen, "DifficultyLabel", L("difficulty"));
+            SetEditableText(screen, "DifficultyName", GetDifficultyName());
+
+            BindEditableButton(screen, "AbilityPreviousButton", "<", () => CycleSpecialAbility(-1));
+            BindEditableButton(screen, "AbilityNextButton", ">", () => CycleSpecialAbility(1));
+            BindEditableButton(screen, "DifficultyPreviousButton", "<", () => CycleDifficulty(-1));
+            BindEditableButton(screen, "DifficultyNextButton", ">", () => CycleDifficulty(1));
+            BindEditableButton(screen, "StartGameButton", L("start_new_game"), () =>
+            {
+                StartNewRun();
+                MarkUiDirty();
+            });
         }
 
         private void BindEditableBoardScreen(Transform screen, bool shopOpen)
@@ -317,6 +386,7 @@ namespace Malatro
             BindEditableRelicSlots(screen, false);
             BindEditableHorseSlots(screen);
             BindEditableTicketSlots(screen);
+            EnsureEditableEntrantSwapButton(screen);
 
             BindEditableButton(screen, "ShopButton", L("shop_screen"), () =>
             {
@@ -329,6 +399,12 @@ namespace Malatro
                 StartRace();
                 MarkUiDirty();
             });
+
+            BindEditableButton(
+                screen,
+                "EntrantSwapButton",
+                $"{L("swap_entrants")}\n{string.Format(L("swap_uses_left"), entrantSwapUsesRemaining)}",
+                ShowEntrantSwapModal);
         }
 
         private void BindEditableShopScreen(Transform screen)
@@ -338,6 +414,7 @@ namespace Malatro
             EnsureEditableShopHorseScroll(screen);
             BindEditableHorseSlots(screen);
             BindEditableShopOffers(screen);
+            EnsureEditableEntrantSwapButton(screen);
 
             BindEditableButton(screen, "BackToBettingButton", L("back_prediction"), () =>
             {
@@ -350,6 +427,12 @@ namespace Malatro
                 RefreshRelicShop();
                 MarkUiDirty();
             });
+
+            BindEditableButton(
+                screen,
+                "EntrantSwapButton",
+                $"{L("swap_entrants")}\n{string.Format(L("swap_uses_left"), entrantSwapUsesRemaining)}",
+                ShowEntrantSwapModal);
         }
 
         private void EnsureEditableShopHorseScroll(Transform screen)
@@ -711,12 +794,46 @@ namespace Malatro
             BuildBoardHorseSlots(screenRoot);
             BuildBoardTicketSlots(screenRoot);
 
+            var swapButton = CreateWhiteButton(
+                "EntrantSwapButton",
+                screenRoot,
+                $"{L("swap_entrants")}\n{string.Format(L("swap_uses_left"), entrantSwapUsesRemaining)}",
+                ShowEntrantSwapModal,
+                88f,
+                18);
+            SetFixed(swapButton.GetComponent<RectTransform>(), 1662f, 640f, 200f, 140f);
+            swapButton.GetComponent<Button>().interactable = entrantSwapUsesRemaining > 0 && roster.Count > field.Count;
+
             var raceButton = CreateWhiteButton("Race Start", screenRoot, "race Start", () =>
             {
                 StartRace();
                 MarkUiDirty();
             }, 170f, 19);
             SetFixed(raceButton.GetComponent<RectTransform>(), 1662f, 815f, 200f, 150f);
+        }
+
+        private void EnsureEditableEntrantSwapButton(Transform screen)
+        {
+            var x = screen != null && screen.name == "ShopScreen" ? 1642f : 1662f;
+            var existing = FindDeep(screen, "EntrantSwapButton");
+            if (existing == null)
+            {
+                var button = CreateWhiteButton(
+                    "EntrantSwapButton",
+                    screen,
+                    L("swap_entrants"),
+                    ShowEntrantSwapModal,
+                    88f,
+                    18);
+                SetFixed(button.GetComponent<RectTransform>(), x, 640f, 200f, 140f);
+                existing = button.transform;
+            }
+
+            var component = existing.GetComponent<Button>();
+            if (component != null)
+            {
+                component.interactable = entrantSwapUsesRemaining > 0 && roster.Count > field.Count;
+            }
         }
 
         private void BuildRaceInfoPanel(Transform parent, bool showMoney)
@@ -924,6 +1041,16 @@ namespace Malatro
                 refreshLabel.text = "refrash";
             }
             SetFixed(refresh.GetComponent<RectTransform>(), 1640f, 805f, 200f, 150f);
+
+            var swapButton = CreateWhiteButton(
+                "EntrantSwapButton",
+                screenRoot,
+                $"{L("swap_entrants")}\n{string.Format(L("swap_uses_left"), entrantSwapUsesRemaining)}",
+                ShowEntrantSwapModal,
+                88f,
+                18);
+            SetFixed(swapButton.GetComponent<RectTransform>(), 1640f, 640f, 200f, 140f);
+            swapButton.GetComponent<Button>().interactable = entrantSwapUsesRemaining > 0 && roster.Count > field.Count;
         }
 
         private void BuildShopOfferCard(Transform parent, RelicData relic, float x)
@@ -1374,6 +1501,200 @@ namespace Malatro
                 MarkUiDirty();
             }, UiGreen, 17);
             AddLayoutElement(next, 220f, 50f, 0f);
+        }
+
+        private void BuildGameOverScreen()
+        {
+            var background = CreateImage("Game Over Background", screenRoot, BoardBlueDark, true);
+            Stretch(background.rectTransform);
+
+            var title = CreateText(
+                "GameOverTitle",
+                screenRoot,
+                L("game_over_title"),
+                58,
+                FontStyles.Bold,
+                gameCleared ? UiGreen : UiRed,
+                TextAlignmentOptions.Center);
+            SetFixed(title.rectTransform, 560f, 92f, 800f, 82f);
+
+            var subtitle = CreateText(
+                "GameOverSubtitle",
+                screenRoot,
+                GetLog(),
+                21,
+                FontStyles.Normal,
+                UiText,
+                TextAlignmentOptions.Center);
+            SetFixed(subtitle.rectTransform, 460f, 184f, 1000f, 64f);
+
+            var panel = CreateImage("GameOverStatsPanel", screenRoot, CardPaper, true);
+            SetFixed(panel.rectTransform, 560f, 280f, 800f, 570f);
+            DecorateCard(panel.gameObject, UiGold, true);
+            AddAccentBar(panel.transform, gameCleared ? UiGreen : UiRed, 10f);
+
+            BuildGameOverStatRow(panel.transform, 0, L("game_clear_status"), gameCleared ? L("clear_success") : L("clear_failed"), gameCleared ? UiGreen : UiRed);
+            BuildGameOverStatRow(panel.transform, 1, L("reached_round"), $"{roundNumber:N0}", Ink);
+            BuildGameOverStatRow(panel.transform, 2, L("best_race_gold"), $"{bestRaceEarnedGold:N0}", UiGold);
+            BuildGameOverStatRow(panel.transform, 3, L("owned_gold"), $"{gold:N0}", Ink);
+            BuildGameOverStatRow(panel.transform, 4, L("target_gold"), $"{roundTargetGold:N0}", Ink);
+            BuildGameOverStatRow(panel.transform, 5, L("earned_gold"), $"{roundEarnedGold:N0}", roundEarnedGold >= roundTargetGold ? UiGreen : UiRed);
+            BuildGameOverStatRow(panel.transform, 6, L("total_earned_gold"), $"{totalEarnedGold:N0}", Ink);
+
+            var restart = CreateButton(
+                "NewRunButton",
+                screenRoot,
+                L("new_run"),
+                () =>
+                {
+                    OpenGameSetup();
+                    MarkUiDirty();
+                },
+                UiGreen,
+                22);
+            SetFixed(restart.GetComponent<RectTransform>(), 760f, 900f, 400f, 76f);
+        }
+
+        private void BuildGameSetupScreen()
+        {
+            var background = CreateImage("Game Setup Background", screenRoot, BoardBlueDark, true);
+            Stretch(background.rectTransform);
+            AddBoardBands(screenRoot);
+
+            var title = CreateText("SetupTitle", screenRoot, L("game_setup_title"), 52, FontStyles.Bold, UiText, TextAlignmentOptions.Center);
+            SetFixed(title.rectTransform, 560f, 80f, 800f, 76f);
+            var hint = CreateText("SetupHint", screenRoot, L("game_setup_hint"), 20, FontStyles.Normal, UiMuted, TextAlignmentOptions.Center);
+            SetFixed(hint.rectTransform, 460f, 166f, 1000f, 48f);
+
+            BuildGameSetupSelector(
+                "Ability",
+                300f,
+                L("special_ability"),
+                GetSpecialAbilityName(),
+                GetSpecialAbilityDescription(),
+                () => CycleSpecialAbility(-1),
+                () => CycleSpecialAbility(1),
+                UiRed);
+            BuildGameSetupSelector(
+                "Difficulty",
+                590f,
+                L("difficulty"),
+                GetDifficultyName(),
+                language == UiLanguage.Korean ? "난이도 효과는 추후 적용됩니다." : "Difficulty effects will be added later.",
+                () => CycleDifficulty(-1),
+                () => CycleDifficulty(1),
+                UiGold);
+
+            var start = CreateButton(
+                "StartGameButton",
+                screenRoot,
+                L("start_new_game"),
+                () =>
+                {
+                    StartNewRun();
+                    MarkUiDirty();
+                },
+                UiGreen,
+                23);
+            SetFixed(start.GetComponent<RectTransform>(), 760f, 900f, 400f, 76f);
+        }
+
+        private void BuildGameSetupSelector(
+            string name,
+            float y,
+            string labelText,
+            string valueText,
+            string descriptionText,
+            Action previous,
+            Action next,
+            Color accent)
+        {
+            var panel = CreateImage($"{name}Panel", screenRoot, CardPaper, true);
+            SetFixed(panel.rectTransform, 460f, y, 1000f, 230f);
+            DecorateCard(panel.gameObject, accent, true);
+            AddAccentBar(panel.transform, accent, 9f);
+
+            var label = CreateText($"{name}Label", panel.transform, labelText, 20, FontStyles.Bold, Ink, TextAlignmentOptions.Center);
+            SetFixed(label.rectTransform, 300f, 20f, 400f, 36f);
+            var previousButton = CreateButton($"{name}PreviousButton", panel.transform, "<", previous, UiSurfaceRaised, 30);
+            SetFixed(previousButton.GetComponent<RectTransform>(), 42f, 76f, 100f, 88f);
+            var nextButton = CreateButton($"{name}NextButton", panel.transform, ">", next, UiSurfaceRaised, 30);
+            SetFixed(nextButton.GetComponent<RectTransform>(), 858f, 76f, 100f, 88f);
+            var value = CreateText($"{name}Name", panel.transform, valueText, 30, FontStyles.Bold, accent, TextAlignmentOptions.Center);
+            SetFixed(value.rectTransform, 180f, 72f, 640f, 52f);
+            var description = CreateText($"{name}Description", panel.transform, descriptionText, 18, FontStyles.Normal, Ink, TextAlignmentOptions.Center);
+            SetFixed(description.rectTransform, 180f, 132f, 640f, 58f);
+        }
+
+        private void CycleSpecialAbility(int direction)
+        {
+            var count = Enum.GetValues(typeof(SpecialAbility)).Length;
+            selectedSpecialAbility = (SpecialAbility)(((int)selectedSpecialAbility + direction + count) % count);
+            MarkUiDirty();
+        }
+
+        private void CycleDifficulty(int direction)
+        {
+            var count = Enum.GetValues(typeof(GameDifficulty)).Length;
+            selectedDifficulty = (GameDifficulty)(((int)selectedDifficulty + direction + count) % count);
+            MarkUiDirty();
+        }
+
+        private string GetSpecialAbilityName()
+        {
+            return selectedSpecialAbility switch
+            {
+                SpecialAbility.RedTicket => L("ability_red_name"),
+                SpecialAbility.BlueTicket => L("ability_blue_name"),
+                SpecialAbility.YellowTicket => L("ability_yellow_name"),
+                _ => string.Empty
+            };
+        }
+
+        private string GetSpecialAbilityDescription()
+        {
+            return selectedSpecialAbility switch
+            {
+                SpecialAbility.RedTicket => L("ability_red_desc"),
+                SpecialAbility.BlueTicket => L("ability_blue_desc"),
+                SpecialAbility.YellowTicket => L("ability_yellow_desc"),
+                _ => string.Empty
+            };
+        }
+
+        private string GetDifficultyName()
+        {
+            return selectedDifficulty switch
+            {
+                GameDifficulty.Easy => L("difficulty_easy"),
+                GameDifficulty.Normal => L("difficulty_normal"),
+                GameDifficulty.Hard => L("difficulty_hard"),
+                _ => string.Empty
+            };
+        }
+
+        private void BuildGameOverStatRow(Transform parent, int index, string labelText, string valueText, Color valueColor)
+        {
+            var y = 42f + index * 70f;
+            var label = CreateText(
+                $"StatLabel_{index:00}",
+                parent,
+                labelText,
+                21,
+                FontStyles.Bold,
+                Ink,
+                TextAlignmentOptions.MidlineLeft);
+            SetFixed(label.rectTransform, 54f, y, 470f, 52f);
+
+            var value = CreateText(
+                $"StatValue_{index:00}",
+                parent,
+                valueText,
+                24,
+                FontStyles.Bold,
+                valueColor,
+                TextAlignmentOptions.MidlineRight);
+            SetFixed(value.rectTransform, 520f, y, 220f, 52f);
         }
 
         private void AddSectionHeader(Transform parent, string title, string subtitle)

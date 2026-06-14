@@ -61,8 +61,10 @@ namespace Malatro
         private static MalatroUiFactory activeUiFactory;
 
         private PredictionScreenController predictionScreenController;
+        private GameSetupScreenController gameSetupScreenController;
         private ShopScreenController shopScreenController;
         private RaceScreenController raceScreenController;
         private ResultsScreenController resultsScreenController;
+        private GameOverScreenController gameOverScreenController;
     }
 }

@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "\uBB3C \uCEF5"
   TotalDistanceMeters: 1600
   EntrantCount: 6
+  EntrantSwapUsesPerRound: 1
+  MaxEntrantSwapsPerUse: 3
   Surface: 0
   League: 0
   Corners:

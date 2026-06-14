@@ -36,7 +36,9 @@ namespace Malatro
         private RaceData currentRace;
         private readonly RelicInventory relicInventory = new RelicInventory();
 
-        private GamePhase phase = GamePhase.Betting;
+        private GamePhase phase = GamePhase.GameSetup;
+        private SpecialAbility selectedSpecialAbility = SpecialAbility.RedTicket;
+        private GameDifficulty selectedDifficulty = GameDifficulty.Normal;
         private List<Horse> latestStandings = new();
         private int raceNumber = 1;
         private int roundNumber = 1;
@@ -46,6 +48,10 @@ namespace Malatro
         private int gold = 100;
         private int hits;
         private int totalTicketsResolved;
+        private int totalEarnedGold;
+        private int bestRaceEarnedGold;
+        private int entrantSwapUsesRemaining;
+        private bool gameCleared;
         private float raceClock;
         private float resultDelay;
         private float podiumTransitionTimer;
@@ -102,7 +108,7 @@ namespace Malatro
             horseDatabase = HorseDatabase.LoadOrCreateRuntimeDefaults();
             relicDatabase = RelicDatabase.LoadOrCreateRuntimeDefaults();
             raceDatabase = RaceDatabase.LoadOrCreateRuntimeDefaults();
-            StartNewRun();
+            OpenGameSetup();
             BuildCanvasUi();
         }
 
@@ -183,6 +189,18 @@ namespace Malatro
             {
                 PrepareNextRace();
             }
+            else if (phase == GamePhase.GameOver && Keyboard.current.spaceKey.wasPressedThisFrame)
+            {
+                OpenGameSetup();
+                MarkUiDirty();
+            }
+        }
+
+        private void OpenGameSetup()
+        {
+            runComplete = false;
+            TransitionTo(GamePhase.GameSetup, false);
+            SetLog("game_setup_hint");
         }
 
         private void StartNewRun()
@@ -209,6 +227,10 @@ namespace Malatro
             gold = 100;
             hits = 0;
             totalTicketsResolved = 0;
+            totalEarnedGold = 0;
+            bestRaceEarnedGold = 0;
+            entrantSwapUsesRemaining = 0;
+            gameCleared = false;
             raceClock = 0f;
             resultDelay = 0f;
             podiumTransitionTimer = 0f;
@@ -252,6 +274,7 @@ namespace Malatro
 
             NormalizeOpeningOdds();
             GenerateRaceData();
+            ResetEntrantSwapUsesForRound();
             SelectRaceEntrants();
             GenerateTickets();
             SetLog("pick_ticket");
@@ -401,7 +424,9 @@ namespace Malatro
                 .Distinct()
                 .ToList();
 
-            while (shopOffers.Count < RelicShopOfferCount)
+            var targetOfferCount = RelicShopOfferCount
+                + (selectedSpecialAbility == SpecialAbility.YellowTicket ? 1 : 0);
+            while (shopOffers.Count < targetOfferCount)
             {
                 var rarity = RollShopRarity();
                 var rollStatOffer = rng.NextDouble() < HorseStatOfferChance;
@@ -629,7 +654,9 @@ namespace Malatro
 
         private void EnsureTicketCount()
         {
-            var targetCount = BaseTicketCount + (relicInventory.Contains(RelicEffectType.ExtraTicket) ? 1 : 0);
+            var targetCount = BaseTicketCount
+                + (selectedSpecialAbility == SpecialAbility.BlueTicket ? 1 : 0)
+                + (relicInventory.Contains(RelicEffectType.ExtraTicket) ? 1 : 0);
 
             // ??좊즵?? ???ろ꼤嶺?? ?????釉뚰?????????Β?利???袁⑸즵????? ????녳뵣??????モ뵲 ????낅묄癲ル슢???移????怨뺣빰 癲ル슢?筌???
             var attempts = 0;
@@ -916,6 +943,8 @@ namespace Malatro
             payout = Mathf.RoundToInt(payout * GetLeaguePayoutMultiplier());
             gold += payout;
             roundEarnedGold += payout;
+            totalEarnedGold += payout;
+            bestRaceEarnedGold = Mathf.Max(bestRaceEarnedGold, payout);
             hits += hitCount;
             totalTicketsResolved += offeredTickets.Count;
             SetLog("all_ticket_result", hitCount, offeredTickets.Count, payout);
@@ -1087,13 +1116,12 @@ namespace Malatro
 
         private void PrepareNextRace()
         {
+            var enteredNewRound = false;
             if (raceNumber % RacesPerRound == 0)
             {
                 if (roundEarnedGold < roundTargetGold)
                 {
-                    runComplete = true;
-                    TransitionTo(GamePhase.Betting);
-                    SetLog("round_failed", roundNumber, roundEarnedGold, roundTargetGold);
+                    ShowGameOver();
                     return;
                 }
 
@@ -1104,12 +1132,17 @@ namespace Malatro
                     ? int.MaxValue
                     : roundTargetGold * 2;
                 roundEarnedGold = 0;
+                enteredNewRound = true;
                 SetLog("round_cleared", clearedRound, clearedGold, roundTargetGold);
             }
 
             raceNumber++;
             DriftStatsBetweenRaces();
             GenerateRaceData();
+            if (enteredNewRound)
+            {
+                ResetEntrantSwapUsesForRound();
+            }
             SelectRaceEntrants();
             GenerateTickets();
             TransitionTo(GamePhase.Betting);
@@ -1117,6 +1150,22 @@ namespace Malatro
             {
                 SetLog("next_race", GetRaceInRound());
             }
+        }
+
+        private void ResetEntrantSwapUsesForRound()
+        {
+            entrantSwapUsesRemaining = Mathf.Max(
+                0,
+                (currentRace != null ? currentRace.EntrantSwapUsesPerRound : 1)
+                + (selectedSpecialAbility == SpecialAbility.RedTicket ? 1 : 0));
+        }
+
+        private void ShowGameOver()
+        {
+            runComplete = true;
+            gameCleared = false;
+            SetLog("round_failed", roundNumber, roundEarnedGold, roundTargetGold);
+            TransitionTo(GamePhase.GameOver);
         }
 
         private int GetRaceInRound()

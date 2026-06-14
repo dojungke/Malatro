@@ -36,12 +36,27 @@ namespace Malatro
 
         private enum GamePhase
         {
+            GameSetup,
             Betting,
             Shop,
             Racing,
-            Results
+            Results,
+            GameOver
         }
 
+        private enum SpecialAbility
+        {
+            RedTicket,
+            BlueTicket,
+            YellowTicket
+        }
+
+        private enum GameDifficulty
+        {
+            Easy,
+            Normal,
+            Hard
+        }
 
         private enum UiLanguage
         {

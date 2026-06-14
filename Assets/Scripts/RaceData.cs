@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 namespace Malatro
 {
@@ -50,6 +51,9 @@ namespace Malatro
         [Header("Fixed Race Properties")]
         [Min(400)] public int TotalDistanceMeters = 1600;
         [Min(2)] public int EntrantCount = 6;
+        [FormerlySerializedAs("EntrantSwapUses")]
+        [Min(0)] public int EntrantSwapUsesPerRound = 1;
+        [Range(1, 3)] public int MaxEntrantSwapsPerUse = 3;
         public TrackSurface Surface = TrackSurface.Turf;
         public RaceLeague League = RaceLeague.G3;
 

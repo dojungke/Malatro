@@ -17,6 +17,8 @@ MonoBehaviour:
   KoreanName: "1.609344Km \uB9C8\uC77C"
   TotalDistanceMeters: 1600
   EntrantCount: 6
+  EntrantSwapUsesPerRound: 1
+  MaxEntrantSwapsPerUse: 3
   Surface: 1
   League: 1
   Corners:

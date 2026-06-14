@@ -278,9 +278,11 @@ namespace Malatro.EditorTools
             var root = Rect("Malatro Editable UI", canvas.transform);
             Stretch(root);
 
+            BuildGameSetupScreen(root);
             BuildBettingScreen(root);
             BuildShopScreen(root);
             BuildDynamicRaceScreen(root);
+            BuildGameOverScreen(root);
 
             EditorUtility.SetDirty(canvas.gameObject);
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -388,6 +390,34 @@ namespace Malatro.EditorTools
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
         }
 
+        [MenuItem("Malatro/UI/Ensure Game Over Screen")]
+        public static void EnsureEditableGameOverScreen()
+        {
+            EnsureKoreanFontAsset();
+            const string scenePath = "Assets/Scenes/SampleScene.unity";
+            if (SceneManager.GetActiveScene().path != scenePath)
+            {
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            }
+
+            var canvas = Object.FindAnyObjectByType<Canvas>();
+            var editableRoot = canvas != null ? canvas.transform.Find("Malatro Editable UI") : null;
+            if (editableRoot == null)
+            {
+                Debug.LogError("Malatro Editable UI was not found.");
+                return;
+            }
+
+            if (editableRoot.Find("GameOverScreen") == null)
+            {
+                BuildGameOverScreen(editableRoot);
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+                EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+            }
+
+            Debug.Log("Malatro editable game over screen is ready.");
+        }
+
         [MenuItem("Malatro/UI/Remove Prediction Shop Button")]
         public static void RemovePredictionShopButton()
         {
@@ -439,6 +469,82 @@ namespace Malatro.EditorTools
             EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
         }
 
+        [MenuItem("Malatro/UI/Ensure Entrant Swap Button")]
+        public static void EnsureEntrantSwapButton()
+        {
+            const string scenePath = "Assets/Scenes/SampleScene.unity";
+            if (SceneManager.GetActiveScene().path != scenePath)
+            {
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            }
+
+            var canvas = Object.FindAnyObjectByType<Canvas>();
+            var editableRoot = canvas != null ? canvas.transform.Find("Malatro Editable UI") : null;
+            var bettingScreen = editableRoot != null ? editableRoot.Find("BettingScreen") : null;
+            var shopScreen = editableRoot != null ? editableRoot.Find("ShopScreen") : null;
+            if (bettingScreen == null || shopScreen == null)
+            {
+                Debug.LogError("Malatro Editable UI betting or shop screen was not found.");
+                return;
+            }
+
+            EnsureEntrantSwapButtonOnScreen(bettingScreen, 1662f);
+            EnsureEntrantSwapButtonOnScreen(shopScreen, 1642f);
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+            Debug.Log("Malatro entrant swap buttons are ready.");
+        }
+
+        [MenuItem("Malatro/UI/Ensure Game Setup Screen")]
+        public static void EnsureGameSetupScreen()
+        {
+            EnsureKoreanFontAsset();
+            const string scenePath = "Assets/Scenes/SampleScene.unity";
+            if (SceneManager.GetActiveScene().path != scenePath)
+            {
+                EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+            }
+
+            var canvas = Object.FindAnyObjectByType<Canvas>();
+            var editableRoot = canvas != null ? canvas.transform.Find("Malatro Editable UI") : null;
+            if (editableRoot == null)
+            {
+                Debug.LogError("Malatro Editable UI was not found.");
+                return;
+            }
+
+            if (editableRoot.Find("GameSetupScreen") == null)
+            {
+                BuildGameSetupScreen(editableRoot);
+                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+                EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+            }
+
+            Debug.Log("Malatro editable game setup screen is ready.");
+        }
+
+        private static void EnsureEntrantSwapButtonOnScreen(Transform screen, float x)
+        {
+            var button = FindDeep(screen, "EntrantSwapButton") as RectTransform;
+            if (button == null)
+            {
+                button = Button(
+                    "EntrantSwapButton",
+                    screen,
+                    "출전마 교체",
+                    x,
+                    640f,
+                    200f,
+                    140f,
+                    Gold).GetComponent<RectTransform>();
+            }
+            else
+            {
+                Fixed(button, x, 640f, 200f, 140f);
+            }
+        }
+
         private static void BuildBettingScreen(Transform root)
         {
             var screen = Rect("BettingScreen", root);
@@ -457,7 +563,58 @@ namespace Malatro.EditorTools
             FitContent(tickets);
 
             Button("ShopButton", screen, "상점", 1662f, 16f, 200f, 150f, Gold);
+            Button("EntrantSwapButton", screen, "출전마 교체", 1662f, 640f, 200f, 140f, Gold);
             Button("RaceStartButton", screen, "경주 시작", 1662f, 815f, 200f, 150f, Green);
+        }
+
+        private static void BuildGameSetupScreen(Transform root)
+        {
+            var screen = Rect("GameSetupScreen", root);
+            Stretch(screen);
+            screen.gameObject.SetActive(false);
+            Image("Background", screen, BoardBlueDark, false, stretch: true);
+            BoardBands(screen);
+
+            Label("SetupTitle", screen, "게임 설정", 52, FontStyles.Bold, Paper, 560f, 80f, 800f, 76f);
+            Label("SetupHint", screen, "특수 능력과 난이도를 선택하세요.", 20, FontStyles.Normal, PaperMuted, 460f, 166f, 1000f, 48f);
+
+            BuildGameSetupSelector(
+                screen,
+                "Ability",
+                300f,
+                "특수 능력",
+                "붉은 마권",
+                "라운드당 출전마 교체 횟수 +1",
+                new Color(0.72f, 0.28f, 0.25f, 1f));
+            BuildGameSetupSelector(
+                screen,
+                "Difficulty",
+                590f,
+                "난이도",
+                "보통",
+                "난이도 효과는 추후 적용됩니다.",
+                Gold);
+
+            Button("StartGameButton", screen, "게임 시작", 760f, 900f, 400f, 76f, Green);
+        }
+
+        private static void BuildGameSetupSelector(
+            Transform parent,
+            string name,
+            float y,
+            string labelText,
+            string valueText,
+            string descriptionText,
+            Color accent)
+        {
+            var panel = Image($"{name}Panel", parent, Paper, false, 460f, y, 1000f, 230f);
+            Outline(panel.gameObject, accent);
+            Accent(panel.transform, accent, 9f);
+            Label($"{name}Label", panel.transform, labelText, 20, FontStyles.Bold, Ink, 300f, 20f, 400f, 36f);
+            Button($"{name}PreviousButton", panel.transform, "<", 42f, 76f, 100f, 88f, PaperMuted);
+            Button($"{name}NextButton", panel.transform, ">", 858f, 76f, 100f, 88f, PaperMuted);
+            Label($"{name}Name", panel.transform, valueText, 30, FontStyles.Bold, accent, 180f, 72f, 640f, 52f);
+            Label($"{name}Description", panel.transform, descriptionText, 18, FontStyles.Normal, Ink, 180f, 132f, 640f, 58f);
         }
 
         private static void BuildShopScreen(Transform root)
@@ -479,6 +636,7 @@ namespace Malatro.EditorTools
             FitContent(offers);
 
             Button("BackToBettingButton", screen, "마권", 1642f, 12f, 200f, 150f, Gold);
+            Button("EntrantSwapButton", screen, "출전마 교체", 1642f, 640f, 200f, 140f, Gold);
             Button("RefreshShopButton", screen, "새로고침", 1642f, 804f, 200f, 150f, Gold);
         }
 
@@ -581,6 +739,39 @@ namespace Malatro.EditorTools
             Label("PodiumRecordsTitle", records.transform, "RACE RECORDS", 24, FontStyles.Bold, Ink, 28f, 28f, 284f, 42f);
             Label("PodiumRecordsText", records.transform, "1. Horse  00.00s", 18, FontStyles.Normal, Ink, 28f, 84f, 284f, 460f, TextAlignmentOptions.TopLeft);
             Button("ResultButton", screen, "RESULT", 1662f, 815f, 200f, 150f, Green);
+        }
+
+        private static void BuildGameOverScreen(Transform root)
+        {
+            var screen = Rect("GameOverScreen", root);
+            Stretch(screen);
+            screen.gameObject.SetActive(false);
+            Image("Background", screen, BoardBlueDark, false, stretch: true);
+            BoardBands(screen);
+
+            Label("GameOverTitle", screen, "게임 오버", 58, FontStyles.Bold, new Color(0.72f, 0.28f, 0.25f, 1f), 560f, 92f, 800f, 82f);
+            Label("GameOverSubtitle", screen, "목표 골드를 달성하지 못했습니다.", 21, FontStyles.Normal, Paper, 460f, 184f, 1000f, 64f);
+
+            var panel = Image("GameOverStatsPanel", screen, Paper, false, 560f, 280f, 800f, 570f);
+            Outline(panel.gameObject, Gold);
+            Accent(panel.transform, new Color(0.72f, 0.28f, 0.25f, 1f), 10f);
+
+            GameOverStatLine(panel.transform, 0, "ClearStatus", "게임 클리어", "실패");
+            GameOverStatLine(panel.transform, 1, "ReachedRound", "도달 라운드", "1");
+            GameOverStatLine(panel.transform, 2, "BestRaceGold", "최고 경기 획득 골드", "0");
+            GameOverStatLine(panel.transform, 3, "OwnedGold", "보유 골드", "0");
+            GameOverStatLine(panel.transform, 4, "TargetGold", "목표 골드", "50");
+            GameOverStatLine(panel.transform, 5, "EarnedGold", "획득 골드", "0");
+            GameOverStatLine(panel.transform, 6, "TotalEarnedGold", "총 획득 골드", "0");
+
+            Button("NewRunButton", screen, "새 게임", 760f, 900f, 400f, 76f, Green);
+        }
+
+        private static void GameOverStatLine(Transform parent, int index, string name, string labelText, string valueText)
+        {
+            var y = 42f + index * 70f;
+            Label($"{name}Label", parent, labelText, 21, FontStyles.Bold, Ink, 54f, y, 470f, 52f, TextAlignmentOptions.MidlineLeft);
+            Label($"{name}Value", parent, valueText, 24, FontStyles.Bold, Ink, 520f, y, 220f, 52f, TextAlignmentOptions.MidlineRight);
         }
 
         [MenuItem("Malatro/UI/Create Horse Race Icon Prefab")]
