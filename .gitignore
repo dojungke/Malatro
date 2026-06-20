@@ -6,7 +6,7 @@
 /[Uu]ser[Ss]ettings/
 
 # Build output
-/[Bb]uild/
+#/[Bb]uild/
 /[Bb]uilds/
 /[Ee]xported[Oo]bj/
 
