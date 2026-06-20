@@ -15,9 +15,10 @@ MonoBehaviour:
   Id: top-gun
   EnglishName: Top Gun
   KoreanName: "\uD0D1\uAC74"
-  EnglishDescription: Multiply reward gold by 2 to the power of ticket types used.
-  KoreanDescription: "\uBCF4\uC0C1 \uACE8\uB4DC\uAC00 2^(\uC0AC\uC6A9\uD55C \uB9C8\uAD8C
-    \uC885\uB958 \uC218)\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  EnglishDescription: "Reward gold multiplier increases with ticket types used: 2x,
+    3x, 4x, and so on."
+  KoreanDescription: "\uC0AC\uC6A9\uD55C \uB9C8\uAD8C \uC885\uB958 \uC218\uC5D0 \uB530\uB77C
+    \uBCF4\uC0C1 \uACE8\uB4DC\uAC00 2\uBC30, 3\uBC30, 4\uBC30\uB85C \uC99D\uAC00\uD569\uB2C8\uB2E4."
   Rarity: 3
   EffectType: 8
   Price: 120

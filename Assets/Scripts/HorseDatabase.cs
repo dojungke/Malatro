@@ -150,6 +150,15 @@ namespace Malatro
                     skill.EffectDuration = 1.1f;
                     skill.StunDuration = 1f;
                     break;
+                case "late-kick":
+                    SetSkill(skill, "Late Kick", "추입", 0f, 0f, 0f, 0f, new Color(0.3f, 0.72f, 1f));
+                    skill.EnglishDescription = "Available in the final 25% of the race. Gain Speed equal to 50% of Magic.";
+                    skill.KoreanDescription = "결승점 전 마지막 25% 구간부터 사용할 수 있으며, 마력의 50%만큼 속도가 상승합니다.";
+                    skill.EffectType = HorseSkillEffectType.LateCharge;
+                    skill.LateChargeThreshold = 0.75f;
+                    skill.MagicSpeedRatio = 0.5f;
+                    skill.Cooldown = 999f;
+                    break;
                 default:
                     SetSkill(skill, "Star Ladder", "별사다리", 4f, 4f, 0f, 0f, new Color(1f, 0.35f, 0.72f));
                     skill.EnglishDescription = "Gain 4 Speed and Acceleration for 3 seconds. The effect increases by 25% for each horse ahead.";

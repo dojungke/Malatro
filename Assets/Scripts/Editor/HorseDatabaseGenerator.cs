@@ -146,6 +146,7 @@ namespace Malatro.Editor
             AssignCustomHorseSkill(database, "Assets/GameData/Horses/2Li.asset", "howl");
             AssignCustomHorseSkill(database, "Assets/GameData/Horses/Mackerel.asset", "leap");
             AssignCustomHorseSkill(database, "Assets/GameData/Horses/Rock.asset", "trip-up");
+            AssignCustomHorseSkill(database, "Assets/GameData/Horses/thehorse.asset", "late-kick");
         }
 
         private static void AssignCustomHorseSkill(HorseDatabase database, string horsePath, string skillId)

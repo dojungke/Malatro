@@ -37,11 +37,11 @@ namespace Malatro
                 RelicRarity.Epic, RelicEffectType.HighestOddsSpeed, 80, new Color(0.78f, 0.36f, 1f)));
             database.Relics.Add(CreateRelic(
                 "prophet", "Prophet", "예언가",
-                "Multiply reward gold by 2 to the power of successful ticket count.", "보상 골드가 2^(적중한 마권 개수)배가 됩니다.",
+                "Reward gold multiplier increases with successful tickets: 2x, 3x, 4x, and so on.", "적중한 마권 개수에 따라 보상 골드가 2배, 3배, 4배로 증가합니다.",
                 RelicRarity.Legendary, RelicEffectType.ProphetReward, 120, new Color(1f, 0.68f, 0.16f)));
             database.Relics.Add(CreateRelic(
                 "top-gun", "Top Gun", "탑건",
-                "Multiply reward gold by 2 to the power of ticket types used.", "보상 골드가 2^(사용한 마권 종류 수)배가 됩니다.",
+                "Reward gold multiplier increases with ticket types used: 2x, 3x, 4x, and so on.", "사용한 마권 종류 수에 따라 보상 골드가 2배, 3배, 4배로 증가합니다.",
                 RelicRarity.Legendary, RelicEffectType.TicketTypeVarietyReward, 120, new Color(0.2f, 0.82f, 0.94f)));
             database.Relics.Add(CreateRelic(
                 "bronze-medal", "Bronze Medal", "동메달",

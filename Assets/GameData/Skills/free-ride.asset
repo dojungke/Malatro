@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: free-ride
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: free-ride
+  EnglishName: Ratatouille
+  KoreanName: "\uBB34\uC784\uC2B9\uCC28"
+  EnglishDescription: Ride a chosen horse within 100 meters ahead or behind for 5
+    seconds, increasing its speed by 30%. When the ride ends, leap 5 meters forward.
+  KoreanDescription: "\uC804\uD6C4\uBC29 100\uBBF8\uD130 \uC774\uB0B4\uC758 \uB9D0\uC744
+    \uD558\uB098 \uC9C0\uC815\uD574 5\uCD08\uAC04 \uD0D1\uC2B9\uD569\uB2C8\uB2E4.
+    \uD0D1\uC2B9\uD55C \uB3D9\uC548 \uD574\uB2F9 \uB9D0\uC758 \uC18D\uB3C4\uAC00
+    30% \uC0C1\uC2B9\uD569\uB2C8\uB2E4. \uD0D1\uC2B9\uC774 \uC885\uB8CC\uB418\uBA74
+    5\uBBF8\uD130 \uC55E\uC73C\uB85C \uC810\uD504\uD569\uB2C8\uB2E4. "
+  ManaCost: 200
+  Cooldown: 1.2
+  EffectDuration: 5
+  RetainedMana: 0
+  EffectType: 12
+  SpeedBoost: 0
+  AccelerationBoost: 0
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.62
+  LateChargeSpeedBoost: 0
+  ChargeDistanceMeters: 5
+  StunDuration: 0
+  TimeStopDuration: 0
+  BonusPerHorseAhead: 0.25
+  AreaRadiusMeters: 100
+  SpeedReductionRatio: 0
+  DebuffDuration: 0
+  RideSpeedBoostRatio: 0.3
+  EffectColor: {r: 1, g: 1, b: 1, a: 1}
+  Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 0}

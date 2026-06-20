@@ -17,8 +17,21 @@ namespace Malatro
         private const int RacesPerRound = 3;
         private const int StartingRoundTarget = 50;
         private const float DefaultManaCost = 100f;
+        private const float StaminaFatigueCapacity = 6f;
+        private const float StaminaPressurePenaltyRate = 0.1f;
+        private const float MaximumStaminaPenaltyRatio = 1f;
+        private const float FatigueGainMultiplier = 4f;
+        private const float FixedDeceleration = 8f;
+        private const float MinimumForwardSpeedRatio = 0.3f;
+        private const float NormalFinalSprintStartProgress = 0.8f;
+        private const float MaximumFinalSprintStartProgress = 0.7f;
+        private const float FinalSprintBonusAtFullStamina = 0.5f;
+        private const float FinalSprintFatigueMultiplier = 2f;
+        private const float SurplusStaminaSpeedBonus = 0.15f;
+        private const float SurplusStaminaFatigueMultiplier = 2f;
         private const float CameraViewDistance = 34f;
         private const float FinalDuelCameraViewDistance = 24f;
+        private const float MultiplayerPreparationSeconds = 60f;
 
         private readonly List<Horse> roster = new();
         private readonly List<Horse> field = new();
@@ -37,6 +50,7 @@ namespace Malatro
         private readonly RelicInventory relicInventory = new RelicInventory();
 
         private GamePhase phase = GamePhase.GameSetup;
+        private GameMode selectedGameMode = GameMode.Single;
         private SpecialAbility selectedSpecialAbility = SpecialAbility.RedTicket;
         private GameDifficulty selectedDifficulty = GameDifficulty.Normal;
         private List<Horse> latestStandings = new();
@@ -56,9 +70,12 @@ namespace Malatro
         private float resultDelay;
         private float podiumTransitionTimer;
         private bool podiumTransitionPending;
+        private float preparationTimeRemaining;
+        private int lastDisplayedPreparationSecond = -1;
         private float racePlaybackSpeed = 1f;
         private bool racePaused;
         private bool runComplete;
+        private bool multiplayerRulesEnabled;
         private UiLanguage language = UiLanguage.Korean;
         private int cameraTargetLane = -1;
         private float cameraDistance;
@@ -143,6 +160,8 @@ namespace Malatro
                 raceWorldView?.SetVisible(false, field);
             }
 
+            UpdatePreparationTimer(Time.deltaTime);
+
             if (Keyboard.current == null)
             {
                 return;
@@ -205,6 +224,8 @@ namespace Malatro
 
         private void StartNewRun()
         {
+            multiplayerRulesEnabled = selectedGameMode == GameMode.Multiplayer;
+
             foreach (var horse in roster)
             {
                 if (horse.Visual != null)
@@ -277,6 +298,7 @@ namespace Malatro
             ResetEntrantSwapUsesForRound();
             SelectRaceEntrants();
             GenerateTickets();
+            ResetPreparationTimer();
             SetLog("pick_ticket");
         }
 
@@ -505,11 +527,11 @@ namespace Malatro
         {
             return rarity switch
             {
-                RelicRarity.Common => 2,
-                RelicRarity.Rare => 3,
-                RelicRarity.Epic => 5,
-                RelicRarity.Legendary => 10,
-                _ => 2
+                RelicRarity.Common => 1,
+                RelicRarity.Rare => 2,
+                RelicRarity.Epic => 3,
+                RelicRarity.Legendary => 5,
+                _ => 1
             };
         }
 
@@ -627,10 +649,10 @@ namespace Malatro
         {
             return rarity switch
             {
-                RelicRarity.Common => 60,
-                RelicRarity.Rare => 25,
-                RelicRarity.Epic => 10,
-                RelicRarity.Legendary => 5,
+                RelicRarity.Common => 70,
+                RelicRarity.Rare => 22,
+                RelicRarity.Epic => 6,
+                RelicRarity.Legendary => 2,
                 _ => 0
             };
         }
@@ -715,6 +737,8 @@ namespace Malatro
             raceClock = 0f;
             resultDelay = 0f;
             racePaused = false;
+            preparationTimeRemaining = 0f;
+            lastDisplayedPreparationSecond = -1;
             latestStandings.Clear();
             TransitionTo(GamePhase.Racing);
             cameraTargetLane = -1;
@@ -760,6 +784,17 @@ namespace Malatro
             foreach (var horse in field)
             {
                 horse.PreviousDistance = horse.Distance;
+                horse.FreeRideSpeedMultiplier = 1f;
+            }
+
+            foreach (var rider in field)
+            {
+                if (rider.RideTarget != null && rider.RideTimer > 0f && !rider.RideTarget.Finished)
+                {
+                    rider.RideTarget.FreeRideSpeedMultiplier = Mathf.Max(
+                        rider.RideTarget.FreeRideSpeedMultiplier,
+                        rider.RideTargetSpeedMultiplier);
+                }
             }
 
             foreach (var horse in field)
@@ -794,15 +829,64 @@ namespace Malatro
                     horse.Mana = CastSkill(horse);
                 }
 
+                if (horse.RideTarget != null)
+                {
+                    continue;
+                }
+
                 var stamina = Mathf.Max(0f, horse.Stamina * aptitudeMultiplier + horse.RelicStaminaBonus);
-                var staminaPressure = Mathf.Max(0f, horse.Fatigue - stamina * 1.4f);
+                var staminaPressure = Mathf.Max(
+                    0f,
+                    horse.Fatigue - stamina * StaminaFatigueCapacity);
+                var staminaPenaltyRatio = Mathf.Min(
+                    MaximumStaminaPenaltyRatio,
+                    staminaPressure * StaminaPressurePenaltyRate);
+                var staminaPerformanceMultiplier = 1f - staminaPenaltyRatio;
+                var raceProgress = horse.Distance / Mathf.Max(1f, GetTrackLength());
+                var staminaCapacity = stamina * StaminaFatigueCapacity;
+                var remainingStaminaRatio = staminaCapacity > 0f
+                    ? Mathf.Clamp01(1f - horse.Fatigue / staminaCapacity)
+                    : 0f;
+                var remainingStamina = Mathf.Max(0f, staminaCapacity - horse.Fatigue);
+                var speedAccelerationFatigueMultiplier = Mathf.Max(
+                    1f,
+                    horse.Speed / (float)Mathf.Max(1, horse.Acceleration));
+                var estimatedSprintSpeed = Mathf.Max(
+                    GetMinimumForwardSpeed(horse),
+                    horse.Speed * aptitudeMultiplier);
+                var estimatedFullSprintFatigueCost = GetTrackLength()
+                    * (1f - MaximumFinalSprintStartProgress)
+                    / estimatedSprintSpeed
+                    * 1.45f
+                    * FatigueGainMultiplier
+                    * speedAccelerationFatigueMultiplier
+                    * FinalSprintFatigueMultiplier;
+                var fullSprintCoverage = estimatedFullSprintFatigueCost > 0f
+                    ? Mathf.Clamp01(remainingStamina / estimatedFullSprintFatigueCost)
+                    : 0f;
+                var finalSprintStartProgress = Mathf.Lerp(
+                    NormalFinalSprintStartProgress,
+                    MaximumFinalSprintStartProgress,
+                    fullSprintCoverage);
+                var surplusStaminaRatio = staminaCapacity > 0f
+                    ? Mathf.Clamp01(
+                        (remainingStamina - estimatedFullSprintFatigueCost) / staminaCapacity)
+                    : 0f;
+                var isFinalSprinting = raceProgress >= finalSprintStartProgress
+                    && remainingStaminaRatio > 0f;
                 // ???⑥???좊읈? 癲ル슣??????㎥?????ш끽維뽭뇡??類?????끹걫???? ?????癲ル슢?꾤땟?룹춻?????뽦뵣??嚥싲갭큔????
                 var targetSpeed = horse.Speed * aptitudeMultiplier
                     + horse.RelicSpeedBonus
                     + horse.TemporarySpeed
-                    + horse.TimedSpeedBonus
-                    - staminaPressure * 0.08f;
-                targetSpeed *= horse.SpeedMultiplier;
+                    + horse.TimedSpeedBonus;
+                targetSpeed *= staminaPerformanceMultiplier;
+                if (isFinalSprinting)
+                {
+                    targetSpeed *= 1f
+                        + remainingStaminaRatio * FinalSprintBonusAtFullStamina
+                        + surplusStaminaRatio * SurplusStaminaSpeedBonus;
+                }
+                targetSpeed *= horse.SpeedMultiplier * horse.FreeRideSpeedMultiplier;
                 targetSpeed -= GetCornerLanePenalty(horse);
                 targetSpeed = Mathf.Min(targetSpeed, GetTrafficSpeedLimit(horse, targetSpeed));
                 targetSpeed += UnityEngine.Random.Range(-0.18f, 0.18f);
@@ -810,10 +894,27 @@ namespace Malatro
                 var acceleration = Mathf.Max(0.1f, horse.Acceleration * aptitudeMultiplier
                     + horse.RelicAccelerationBonus
                     + horse.TemporaryAcceleration
-                    + horse.TimedAccelerationBonus) * 0.7f;
-                horse.CurrentSpeed = Mathf.MoveTowards(horse.CurrentSpeed, targetSpeed, acceleration * deltaTime);
-                horse.Distance += Mathf.Max(1.5f, horse.CurrentSpeed) * deltaTime;
-                horse.Fatigue += deltaTime * Mathf.Lerp(0.85f, 1.45f, horse.Distance / GetTrackLength());
+                    + horse.TimedAccelerationBonus)
+                    * 0.7f
+                    * staminaPerformanceMultiplier;
+                var speedChangeRate = targetSpeed >= horse.CurrentSpeed
+                    ? acceleration
+                    : FixedDeceleration;
+                horse.CurrentSpeed = Mathf.MoveTowards(
+                    horse.CurrentSpeed,
+                    targetSpeed,
+                    speedChangeRate * deltaTime);
+                horse.Distance += Mathf.Max(GetMinimumForwardSpeed(horse), horse.CurrentSpeed)
+                    * deltaTime;
+                var sprintFatigueMultiplier = isFinalSprinting
+                    ? FinalSprintFatigueMultiplier
+                        + surplusStaminaRatio * SurplusStaminaFatigueMultiplier
+                    : 1f;
+                horse.Fatigue += deltaTime
+                    * Mathf.Lerp(0.85f, 1.45f, horse.Distance / GetTrackLength())
+                    * FatigueGainMultiplier
+                    * speedAccelerationFatigueMultiplier
+                    * sprintFatigueMultiplier;
 
                 horse.TemporarySpeed = Mathf.MoveTowards(horse.TemporarySpeed, 0f, deltaTime * 2.4f);
                 horse.TemporaryAcceleration = Mathf.MoveTowards(horse.TemporaryAcceleration, 0f, deltaTime * 2.1f);
@@ -827,6 +928,7 @@ namespace Malatro
                 }
             }
 
+            UpdateFreeRideEffects(deltaTime);
             ResolveOvertakeSkills();
 
             if (field.All(horse => horse.Finished))
@@ -862,7 +964,7 @@ namespace Malatro
                 return horse.Mana;
             }
 
-            if (!horse.Skill.CanActivate(horse, field))
+            if (!horse.Skill.CanActivate(horse, GetTrackLength(), field))
             {
                 return horse.Mana;
             }
@@ -930,7 +1032,7 @@ namespace Malatro
                 .Sum(GetRelicAdjustedPayout);
             if (hitCount > 0 && relicInventory.Contains(RelicEffectType.ProphetReward))
             {
-                payout *= 1 << hitCount;
+                payout *= hitCount + 1;
             }
             if (payout > 0 && relicInventory.Contains(RelicEffectType.TicketTypeVarietyReward))
             {
@@ -938,7 +1040,7 @@ namespace Malatro
                     .Select(ticket => ticket.Type)
                     .Distinct()
                     .Count();
-                payout *= 1 << ticketTypeCount;
+                payout *= ticketTypeCount + 1;
             }
             payout = Mathf.RoundToInt(payout * GetLeaguePayoutMultiplier());
             gold += payout;
@@ -1088,6 +1190,13 @@ namespace Malatro
             return horse.Data.GetAptitudeMultiplier(currentRace.Surface);
         }
 
+        private static float GetMinimumForwardSpeed(Horse horse)
+        {
+            return horse == null
+                ? 0f
+                : horse.Speed * MinimumForwardSpeedRatio;
+        }
+
         private void UpdateOddsAfterRace()
         {
             for (var i = 0; i < latestStandings.Count; i++)
@@ -1145,10 +1254,82 @@ namespace Malatro
             }
             SelectRaceEntrants();
             GenerateTickets();
+            ResetPreparationTimer();
             TransitionTo(GamePhase.Betting);
             if (raceNumber % RacesPerRound != 1)
             {
                 SetLog("next_race", GetRaceInRound());
+            }
+        }
+
+        private void ResetPreparationTimer()
+        {
+            preparationTimeRemaining = multiplayerRulesEnabled ? MultiplayerPreparationSeconds : 0f;
+            lastDisplayedPreparationSecond = Mathf.CeilToInt(preparationTimeRemaining);
+        }
+
+        private void UpdatePreparationTimer(float deltaTime)
+        {
+            if (!multiplayerRulesEnabled
+                || runComplete
+                || (phase != GamePhase.Betting && phase != GamePhase.Shop)
+                || preparationTimeRemaining <= 0f)
+            {
+                return;
+            }
+
+            var previousSecond = Mathf.CeilToInt(preparationTimeRemaining);
+            preparationTimeRemaining = Mathf.Max(0f, preparationTimeRemaining - deltaTime);
+            var currentSecond = Mathf.CeilToInt(preparationTimeRemaining);
+            if (currentSecond != previousSecond || currentSecond != lastDisplayedPreparationSecond)
+            {
+                lastDisplayedPreparationSecond = currentSecond;
+                MarkUiDirty();
+            }
+
+            if (preparationTimeRemaining <= 0f)
+            {
+                SetLog("preparation_time_expired");
+                StartRace();
+            }
+        }
+
+        private void UpdateFreeRideEffects(float deltaTime)
+        {
+            var trackLength = GetTrackLength();
+            foreach (var rider in field)
+            {
+                if (rider.RideTarget == null)
+                {
+                    continue;
+                }
+
+                rider.RideTimer = Mathf.Max(0f, rider.RideTimer - deltaTime);
+                var jumpNow = trackLength - rider.RideTarget.Distance <= rider.RideEndJumpDistance;
+                var riderStunned = rider.StunTimer > 0f;
+                if (rider.RideTimer > 0f
+                    && !rider.RideTarget.Finished
+                    && !jumpNow
+                    && !riderStunned)
+                {
+                    rider.Distance = rider.RideTarget.Distance;
+                    rider.CurrentSpeed = rider.RideTarget.CurrentSpeed;
+                    rider.LaneOffset = rider.RideTarget.LaneOffset;
+                    continue;
+                }
+
+                rider.Distance = Mathf.Min(
+                    trackLength,
+                    Mathf.Max(rider.Distance, rider.RideTarget.Distance) + rider.RideEndJumpDistance);
+                rider.RideTarget = null;
+                rider.RideTimer = 0f;
+                rider.RideEndJumpDistance = 0f;
+                rider.RideTargetSpeedMultiplier = 1f;
+                if (rider.Distance >= trackLength && !rider.Finished)
+                {
+                    rider.Finished = true;
+                    rider.FinishTime = raceClock;
+                }
             }
         }
 

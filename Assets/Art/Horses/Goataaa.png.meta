@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c3cfcd7ada40b3749afb0611fec8b20c
+guid: 61bdbeb06cca63d46b2f31aea69fce15
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 9201285994274805834
-    second: race-path-chromakey_0
+      213: 7718212950871673721
+    second: Goataaa_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: race-path-chromakey_0
+      name: Goataaa_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1774
-        height: 887
+        x: 39
+        y: 22
+        width: 299
+        height: 600
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: a48d68d7cd881bf70800000000000000
-      internalID: 9201285994274805834
+      spriteID: 97b868539c99c1b60800000000000000
+      internalID: 7718212950871673721
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      race-path-chromakey_0: 9201285994274805834
+      Goataaa_0: 7718212950871673721
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

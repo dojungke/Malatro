@@ -42,6 +42,11 @@ namespace Malatro
         public float TimeStopTimer;
         public float SpeedMultiplier = 1f;
         public float SpeedMultiplierTimer;
+        public Horse RideTarget;
+        public float RideTimer;
+        public float RideEndJumpDistance;
+        public float RideTargetSpeedMultiplier = 1f;
+        public float FreeRideSpeedMultiplier = 1f;
         public bool Finished;
         public string SkillMessage;
         public HorseSkillData Skill;
@@ -116,6 +121,11 @@ namespace Malatro
             TimeStopTimer = 0f;
             SpeedMultiplier = 1f;
             SpeedMultiplierTimer = 0f;
+            RideTarget = null;
+            RideTimer = 0f;
+            RideEndJumpDistance = 0f;
+            RideTargetSpeedMultiplier = 1f;
+            FreeRideSpeedMultiplier = 1f;
             Finished = false;
             Manifested = false;
             SkillMessage = string.Empty;

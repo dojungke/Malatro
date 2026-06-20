@@ -29,15 +29,15 @@ MonoBehaviour:
     Min: 5
     Max: 12
   Stamina:
-    Min: 6
-    Max: 13
+    Min: 10
+    Max: 15
   Magic:
     Min: 8
     Max: 18
   TurfAptitude: 1
   DirtAptitude: 1
   OpeningOddsRange: {x: 1.8, y: 7.5}
-  RunSheet: {fileID: 2800000, guid: e3b9e2d1224e1ad498c5ef1c59fa3461, type: 3}
+  RunSheet: {fileID: 2800000, guid: e9d8c837ef17fa442bf41e9949683ccf, type: 3}
   UiColor: {r: 1, g: 1, b: 1, a: 1}
   SkillData: {fileID: 11400000, guid: 878feddfbd9cafb4d8d37653d21d3f34, type: 2}
   legacySkill: 1

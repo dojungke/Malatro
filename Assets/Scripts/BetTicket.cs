@@ -90,7 +90,7 @@ namespace Malatro
 
         public int GetExpectedPayout(int baseGoldBonus)
         {
-            return Mathf.RoundToInt((BasePayout + Mathf.Max(0, baseGoldBonus)) * odds);
+            return Mathf.RoundToInt(BasePayout * odds) + Mathf.Max(0, baseGoldBonus);
         }
 
         public string GetTypeName(bool korean)

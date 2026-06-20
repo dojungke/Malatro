@@ -16,9 +16,10 @@ MonoBehaviour:
   EnglishName: "\uFF62National Light\uFF63"
   KoreanName: "\uFF62\uBE5B \uD558\uB298\uC5D0\uC11C \uB0B4\uB824\uC624\uB9AC\uFF63"
   EnglishDescription: "Manifest \u300Eright blue\u300F, increasing Speed and Acceleration
-    by 3."
+    by 3 for the rest of the race."
   KoreanDescription: "\u300E\uD558\uB298\uD558\uB298\u300F\uC744 \uD604\uD604\uD558\uC5EC
-    \uC18D\uB3C4\uC640 \uAC00\uC18D\uB3C4\uB97C 3 \uC99D\uAC00\uC2DC\uD0A8\uB2E4.\n"
+    \uC774\uBC88 \uACBD\uAE30 \uB3D9\uC548 \uC18D\uB3C4\uC640 \uAC00\uC18D\uB3C4\uB97C
+    3 \uC99D\uAC00\uC2DC\uD0A8\uB2E4.\n"
   ManaCost: 100
   Cooldown: 0
   EffectDuration: 1.4

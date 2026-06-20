@@ -514,14 +514,33 @@ namespace Malatro.EditorTools
                 return;
             }
 
-            if (editableRoot.Find("GameSetupScreen") == null)
+            var setupScreen = editableRoot.Find("GameSetupScreen");
+            if (setupScreen == null)
             {
                 BuildGameSetupScreen(editableRoot);
-                EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-                EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
+            }
+            else
+            {
+                EnsureSetupLanguageButton(setupScreen);
             }
 
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            EditorSceneManager.SaveScene(SceneManager.GetActiveScene());
             Debug.Log("Malatro editable game setup screen is ready.");
+        }
+
+        private static void EnsureSetupLanguageButton(Transform screen)
+        {
+            var button = FindDeep(screen, "LanguageButton") as RectTransform;
+            if (button == null)
+            {
+                button = Button("LanguageButton", screen, "KR / EN", 1640f, 54f, 180f, 56f, Gold)
+                    .GetComponent<RectTransform>();
+            }
+            else
+            {
+                Fixed(button, 1640f, 54f, 180f, 56f);
+            }
         }
 
         private static void EnsureEntrantSwapButtonOnScreen(Transform screen, float x)
@@ -577,6 +596,8 @@ namespace Malatro.EditorTools
 
             Label("SetupTitle", screen, "게임 설정", 52, FontStyles.Bold, Paper, 560f, 80f, 800f, 76f);
             Label("SetupHint", screen, "특수 능력과 난이도를 선택하세요.", 20, FontStyles.Normal, PaperMuted, 460f, 166f, 1000f, 48f);
+
+            Button("LanguageButton", screen, "KR / EN", 1640f, 54f, 180f, 56f, Gold);
 
             BuildGameSetupSelector(
                 screen,

@@ -58,6 +58,12 @@ namespace Malatro
             Hard
         }
 
+        private enum GameMode
+        {
+            Single,
+            Multiplayer
+        }
+
         private enum UiLanguage
         {
             Korean,

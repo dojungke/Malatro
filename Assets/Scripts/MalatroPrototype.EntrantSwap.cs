@@ -27,10 +27,7 @@ namespace Malatro
 
         private void BuildEntrantSwapModal(List<Horse> outgoing)
         {
-            var maximum = Mathf.Clamp(
-                currentRace != null ? currentRace.MaxEntrantSwapsPerUse : 3,
-                1,
-                3);
+            var maximum = GetEntrantSwapLimitPerUse();
 
             ClearChildren(modalRoot);
             CreateModalBackdrop(() => ClearChildren(modalRoot));
@@ -184,6 +181,19 @@ namespace Malatro
             ClearChildren(modalRoot);
             MarkUiDirty();
             return true;
+        }
+
+        private int GetEntrantSwapLimitPerUse()
+        {
+            if (multiplayerRulesEnabled)
+            {
+                return 1;
+            }
+
+            return Mathf.Clamp(
+                currentRace != null ? currentRace.MaxEntrantSwapsPerUse : 3,
+                1,
+                3);
         }
     }
 }

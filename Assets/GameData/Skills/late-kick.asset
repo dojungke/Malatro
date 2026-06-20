@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1d0bd08c7f3444f46b551f7f2ff1a73a, type: 3}
+  m_Name: late-kick
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseSkillData
+  Id: late-kick
+  EnglishName: Late Kick
+  KoreanName: "\uCD94\uC785"
+  EnglishDescription: Available in the final 25% of the race. Gain Speed equal to 50% of Magic.
+  KoreanDescription: "\uACB0\uC2B9\uC810 \uC804 \uB9C8\uC9C0\uB9C9 25% \uAD6C\uAC04\uBD80\uD130 \uC0AC\uC6A9\uD560 \uC218 \uC788\uC73C\uBA70, \uB9C8\uB825\uC758 50%\uB9CC\uD07C \uC18D\uB3C4\uAC00 \uC0C1\uC2B9\uD569\uB2C8\uB2E4."
+  ManaCost: 100
+  Cooldown: 999
+  EffectDuration: 1.1
+  RetainedMana: 0
+  EffectType: 1
+  SpeedBoost: 0
+  AccelerationBoost: 0
+  FatigueRecovery: 0
+  LateChargeThreshold: 0.75
+  LateChargeSpeedBoost: 0
+  MagicSpeedRatio: 0.5
+  ChargeDistanceMeters: 0
+  StunDuration: 0
+  TimeStopDuration: 0
+  BonusPerHorseAhead: 0.25
+  AreaRadiusMeters: 0
+  SpeedReductionRatio: 0
+  DebuffDuration: 0
+  RideSpeedBoostRatio: 0.3
+  EffectColor: {r: 0.3, g: 0.72, b: 1, a: 1}
+  Icon: {fileID: 0}
+  ManifestedRunSheet: {fileID: 0}

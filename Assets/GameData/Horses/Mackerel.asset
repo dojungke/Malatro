@@ -29,8 +29,8 @@ MonoBehaviour:
     Min: 1
     Max: 1
   Stamina:
-    Min: 6
-    Max: 13
+    Min: 10
+    Max: 15
   Magic:
     Min: 8
     Max: 15

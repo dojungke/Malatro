@@ -1,0 +1,43 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1434320e172a94043aa583fd06714d91, type: 3}
+  m_Name: turtle
+  m_EditorClassIdentifier: Assembly-CSharp::Malatro.HorseData
+  Id: turtle
+  EnglishName: sea turtle
+  KoreanName: "\uBC14\uB2E4\uAC70\uBD81"
+  EnglishShortName: turtle
+  KoreanShortName: "\uAC70\uBD81"
+  EnglishDescription: It is a turtle.
+  KoreanDescription: "\uAC70\uBD81\uD569\uB2C8\uB2E4."
+  Tags:
+  - "\uB3D9\uBB3C"
+  - "\uBAA8\uD5D8\uAC00"
+  Speed:
+    Min: 3
+    Max: 7
+  Acceleration:
+    Min: 3
+    Max: 7
+  Stamina:
+    Min: 10
+    Max: 15
+  Magic:
+    Min: 8
+    Max: 18
+  TurfAptitude: 5
+  DirtAptitude: 4
+  OpeningOddsRange: {x: 1.8, y: 7.5}
+  RunSheet: {fileID: 2800000, guid: 94da173bb0c14ad4e823fb186ef2dbca, type: 3}
+  UiColor: {r: 1, g: 1, b: 1, a: 1}
+  SkillData: {fileID: 11400000, guid: b4d974e931204f849a99d43f88cd2715, type: 2}
+  legacySkill: 5

@@ -16,7 +16,9 @@ namespace Malatro
         AreaSlow,
         Leap,
         OvertakeTrip,
-        Manifestation
+        Manifestation,
+        FreeRide,
+        PermanentSpeed
     }
 
     [CreateAssetMenu(fileName = "HorseSkillData", menuName = "Malatro/Horse Skill Data")]
@@ -43,6 +45,7 @@ namespace Malatro
         public float FatigueRecovery;
         [Range(0f, 1f)] public float LateChargeThreshold = 0.62f;
         public float LateChargeSpeedBoost;
+        [Min(0f)] public float MagicSpeedRatio;
         [Min(0f)] public float ChargeDistanceMeters;
         [Min(0f)] public float StunDuration;
         [Min(0f)] public float TimeStopDuration;
@@ -50,6 +53,7 @@ namespace Malatro
         [Min(0f)] public float AreaRadiusMeters;
         [Range(0f, 1f)] public float SpeedReductionRatio;
         [Min(0f)] public float DebuffDuration;
+        [Range(0f, 1f)] public float RideSpeedBoostRatio = 0.3f;
 
         [Header("Visual")]
         public Color EffectColor = Color.white;
@@ -69,7 +73,7 @@ namespace Malatro
 
         public bool IsReactive => EffectType == HorseSkillEffectType.OvertakeTrip;
 
-        public bool CanActivate(Horse horse, IReadOnlyList<Horse> field)
+        public bool CanActivate(Horse horse, float trackLength, IReadOnlyList<Horse> field)
         {
             if (horse == null)
             {
@@ -84,6 +88,17 @@ namespace Malatro
             if (EffectType == HorseSkillEffectType.Manifestation && horse.Manifested)
             {
                 return false;
+            }
+
+            if (EffectType == HorseSkillEffectType.FreeRide && horse.RideTarget != null)
+            {
+                return false;
+            }
+
+            if (EffectType == HorseSkillEffectType.LateCharge)
+            {
+                return trackLength > 0f
+                    && horse.Distance >= trackLength * Mathf.Clamp01(LateChargeThreshold);
             }
 
             if (field == null)
@@ -109,6 +124,23 @@ namespace Malatro
 
             if (EffectType == HorseSkillEffectType.AreaStun
                 || EffectType == HorseSkillEffectType.AreaSlow)
+            {
+                var radius = MetersToSimulationDistance(AreaRadiusMeters);
+                foreach (var target in field)
+                {
+                    if (target != null
+                        && target != horse
+                        && !target.Finished
+                        && Mathf.Abs(target.Distance - horse.Distance) <= radius)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (EffectType == HorseSkillEffectType.FreeRide)
             {
                 var radius = MetersToSimulationDistance(AreaRadiusMeters);
                 foreach (var target in field)
@@ -156,7 +188,9 @@ namespace Malatro
                 return 0f;
             }
 
-            if (EffectType != HorseSkillEffectType.StarStair)
+            if (EffectType != HorseSkillEffectType.StarStair
+                && EffectType != HorseSkillEffectType.Manifestation
+                && EffectType != HorseSkillEffectType.PermanentSpeed)
             {
                 horse.TemporarySpeed += SpeedBoost;
                 horse.TemporaryAcceleration += AccelerationBoost;
@@ -166,9 +200,8 @@ namespace Malatro
             if (EffectType == HorseSkillEffectType.LateCharge)
             {
                 // 후반 추입은 정해진 트랙 진행률을 넘었을 때만 추가 속도를 부여한다.
-                horse.TemporarySpeed += horse.Distance >= trackLength * LateChargeThreshold
-                    ? LateChargeSpeedBoost
-                    : 0f;
+                var magic = Mathf.Max(0f, horse.Magic + horse.RelicMagicBonus);
+                horse.TemporarySpeed += LateChargeSpeedBoost + magic * MagicSpeedRatio;
             }
             else if (EffectType == HorseSkillEffectType.KnightStrike)
             {
@@ -323,7 +356,49 @@ namespace Malatro
             }
             else if (EffectType == HorseSkillEffectType.Manifestation)
             {
+                horse.TimedSpeedBonus = SpeedBoost;
+                horse.TimedAccelerationBonus = AccelerationBoost;
+                horse.TimedBoostTimer = float.PositiveInfinity;
                 horse.Manifest(ManifestedRunSheet);
+            }
+            else if (EffectType == HorseSkillEffectType.FreeRide && field != null)
+            {
+                var radius = MetersToSimulationDistance(AreaRadiusMeters);
+                Horse nearest = null;
+                var nearestDistance = float.MaxValue;
+                foreach (var target in field)
+                {
+                    if (target == null || target == horse || target.Finished)
+                    {
+                        continue;
+                    }
+
+                    var distance = Mathf.Abs(target.Distance - horse.Distance);
+                    if (distance <= radius
+                        && (distance < nearestDistance
+                            || (Mathf.Approximately(distance, nearestDistance) && target.Lane < nearest.Lane)))
+                    {
+                        nearest = target;
+                        nearestDistance = distance;
+                    }
+                }
+
+                if (nearest != null)
+                {
+                    horse.RideTarget = nearest;
+                    horse.RideTimer = EffectDuration;
+                    horse.RideEndJumpDistance = MetersToSimulationDistance(ChargeDistanceMeters);
+                    horse.RideTargetSpeedMultiplier = 1f + Mathf.Max(0f, RideSpeedBoostRatio);
+                    horse.Distance = nearest.Distance;
+                }
+                else
+                {
+                    return horse.Mana;
+                }
+            }
+            else if (EffectType == HorseSkillEffectType.PermanentSpeed)
+            {
+                horse.Speed = Mathf.Max(1, horse.Speed + Mathf.RoundToInt(SpeedBoost));
             }
 
             horse.SkillCooldown = Cooldown;

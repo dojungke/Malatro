@@ -179,6 +179,36 @@ namespace Malatro
                     horse.Renderer.sortingOrder = 20 + Mathf.RoundToInt(horse.LaneOffset * 10f);
                 }
 
+            }
+
+            foreach (var horse in horses)
+            {
+                if (horse?.Visual == null)
+                {
+                    continue;
+                }
+
+                if (horse.RideTarget?.Visual != null && horse.RideTimer > 0f)
+                {
+                    var targetTransform = horse.RideTarget.Visual.transform;
+                    var targetSprite = horse.RideTarget.Renderer != null
+                        ? horse.RideTarget.Renderer.sprite
+                        : null;
+                    var headOffset = targetSprite != null
+                        ? targetSprite.bounds.max.y * targetTransform.localScale.y + 0.08f
+                        : targetTransform.localScale.y * 0.55f;
+                    horse.Visual.transform.localPosition = targetTransform.localPosition + Vector3.up * headOffset;
+                    horse.Visual.transform.localRotation = targetTransform.localRotation;
+                    horse.Visual.transform.localScale = targetTransform.localScale;
+                    if (horse.Renderer != null)
+                    {
+                        var targetOrder = horse.RideTarget.Renderer != null
+                            ? horse.RideTarget.Renderer.sortingOrder
+                            : 20;
+                        horse.Renderer.sortingOrder = targetOrder + 12;
+                    }
+                }
+
                 var effects = horse.Visual.GetComponent<HorseWorldEffects>();
                 if (effects != null)
                 {

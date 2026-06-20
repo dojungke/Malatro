@@ -361,6 +361,8 @@ namespace Malatro
 
         private void BindEditableGameSetupScreen(Transform screen)
         {
+            EnsureEditableSetupLanguageButton(screen);
+
             SetEditableText(screen, "SetupTitle", L("game_setup_title"));
             SetEditableText(screen, "SetupHint", L("game_setup_hint"));
             SetEditableText(screen, "AbilityLabel", L("special_ability"));
@@ -368,11 +370,21 @@ namespace Malatro
             SetEditableText(screen, "AbilityDescription", GetSpecialAbilityDescription());
             SetEditableText(screen, "DifficultyLabel", L("difficulty"));
             SetEditableText(screen, "DifficultyName", GetDifficultyName());
+            SetEditableText(screen, "ModeLabel", L("game_mode"));
+            SetEditableText(screen, "ModeName", GetGameModeName());
+            SetEditableText(screen, "ModeDescription", GetGameModeDescription());
 
             BindEditableButton(screen, "AbilityPreviousButton", "<", () => CycleSpecialAbility(-1));
             BindEditableButton(screen, "AbilityNextButton", ">", () => CycleSpecialAbility(1));
             BindEditableButton(screen, "DifficultyPreviousButton", "<", () => CycleDifficulty(-1));
             BindEditableButton(screen, "DifficultyNextButton", ">", () => CycleDifficulty(1));
+            BindEditableButton(screen, "ModePreviousButton", "<", () => CycleGameMode(-1));
+            BindEditableButton(screen, "ModeNextButton", ">", () => CycleGameMode(1));
+            BindEditableButton(screen, "LanguageButton", "KR / EN", () =>
+            {
+                ToggleLanguage();
+                MarkUiDirty();
+            });
             BindEditableButton(screen, "StartGameButton", L("start_new_game"), () =>
             {
                 StartNewRun();
@@ -452,6 +464,27 @@ namespace Malatro
                 50f,
                 0f,
                 0f);
+        }
+
+        private void EnsureEditableSetupLanguageButton(Transform screen)
+        {
+            if (screen == null || FindDeep(screen, "LanguageButton") != null)
+            {
+                return;
+            }
+
+            var button = CreateButton(
+                "LanguageButton",
+                screen,
+                "KR / EN",
+                () =>
+                {
+                    ToggleLanguage();
+                    MarkUiDirty();
+                },
+                UiGold,
+                18);
+            SetFixed(button.GetComponent<RectTransform>(), 1640f, 54f, 180f, 56f);
         }
 
         private void BindEditableRaceScreen(Transform screen)
@@ -573,6 +606,10 @@ namespace Malatro
                 ? $"{currentRace.League} {currentRace.GetSurfaceName(language == UiLanguage.Korean)}: {currentRace.TotalDistanceMeters}m"
                 : "G1 dirt: 2000m";
             var text = $"{title}\n\n{subtitle}\n\n\n{L("round")} {roundNumber} ({GetRaceInRound()}/{RacesPerRound})\n{L("round_goal")}\n{roundEarnedGold:N0}/{roundTargetGold:N0}";
+            if (multiplayerRulesEnabled && (phase == GamePhase.Betting || phase == GamePhase.Shop))
+            {
+                text += $"\n{L("prep_time")} {FormatPreparationTime()}";
+            }
             if (showMoney)
             {
                 text += $"\n\n{L("gold")}: {gold:N0}";
@@ -848,6 +885,10 @@ namespace Malatro
                 ? $"{currentRace.League} {currentRace.GetSurfaceName(language == UiLanguage.Korean)}: {currentRace.TotalDistanceMeters}m"
                 : "G1 dirt: 2000m";
             var text = $"{title}\n\n{subtitle}\n\n\n{L("round")} {roundNumber} ({GetRaceInRound()}/{RacesPerRound})\n{L("round_goal")}\n{roundEarnedGold:N0}/{roundTargetGold:N0}";
+            if (multiplayerRulesEnabled && (phase == GamePhase.Betting || phase == GamePhase.Shop))
+            {
+                text += $"\n{L("prep_time")} {FormatPreparationTime()}";
+            }
             if (showMoney)
             {
                 text += $"\n\nmoney: {gold:N0}";
@@ -857,6 +898,12 @@ namespace Malatro
             label.lineSpacing = 4f;
             label.textWrappingMode = TextWrappingModes.Normal;
             SetAnchors(label.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, new Vector2(-48f, -56f));
+        }
+
+        private string FormatPreparationTime()
+        {
+            var seconds = Mathf.CeilToInt(Mathf.Max(0f, preparationTimeRemaining));
+            return $"{seconds / 60:00}:{seconds % 60:00}";
         }
 
         private void BuildRelicSlots(Transform parent, bool shopOpen)
@@ -1566,9 +1613,22 @@ namespace Malatro
             var hint = CreateText("SetupHint", screenRoot, L("game_setup_hint"), 20, FontStyles.Normal, UiMuted, TextAlignmentOptions.Center);
             SetFixed(hint.rectTransform, 460f, 166f, 1000f, 48f);
 
+            var languageButton = CreateButton(
+                "LanguageButton",
+                screenRoot,
+                "KR / EN",
+                () =>
+                {
+                    ToggleLanguage();
+                    MarkUiDirty();
+                },
+                UiGold,
+                18);
+            SetFixed(languageButton.GetComponent<RectTransform>(), 1640f, 54f, 180f, 56f);
+
             BuildGameSetupSelector(
                 "Ability",
-                300f,
+                248f,
                 L("special_ability"),
                 GetSpecialAbilityName(),
                 GetSpecialAbilityDescription(),
@@ -1577,13 +1637,22 @@ namespace Malatro
                 UiRed);
             BuildGameSetupSelector(
                 "Difficulty",
-                590f,
+                476f,
                 L("difficulty"),
                 GetDifficultyName(),
                 language == UiLanguage.Korean ? "난이도 효과는 추후 적용됩니다." : "Difficulty effects will be added later.",
                 () => CycleDifficulty(-1),
                 () => CycleDifficulty(1),
                 UiGold);
+            BuildGameSetupSelector(
+                "Mode",
+                704f,
+                L("game_mode"),
+                GetGameModeName(),
+                GetGameModeDescription(),
+                () => CycleGameMode(-1),
+                () => CycleGameMode(1),
+                UiGreen);
 
             var start = CreateButton(
                 "StartGameButton",
@@ -1596,7 +1665,7 @@ namespace Malatro
                 },
                 UiGreen,
                 23);
-            SetFixed(start.GetComponent<RectTransform>(), 760f, 900f, 400f, 76f);
+            SetFixed(start.GetComponent<RectTransform>(), 760f, 960f, 400f, 76f);
         }
 
         private void BuildGameSetupSelector(
@@ -1640,6 +1709,14 @@ namespace Malatro
             MarkUiDirty();
         }
 
+        private void CycleGameMode(int direction)
+        {
+            var count = Enum.GetValues(typeof(GameMode)).Length;
+            selectedGameMode = (GameMode)(((int)selectedGameMode + direction + count) % count);
+            multiplayerRulesEnabled = selectedGameMode == GameMode.Multiplayer;
+            MarkUiDirty();
+        }
+
         private string GetSpecialAbilityName()
         {
             return selectedSpecialAbility switch
@@ -1669,6 +1746,26 @@ namespace Malatro
                 GameDifficulty.Easy => L("difficulty_easy"),
                 GameDifficulty.Normal => L("difficulty_normal"),
                 GameDifficulty.Hard => L("difficulty_hard"),
+                _ => string.Empty
+            };
+        }
+
+        private string GetGameModeName()
+        {
+            return selectedGameMode switch
+            {
+                GameMode.Single => L("mode_single"),
+                GameMode.Multiplayer => L("mode_multiplayer"),
+                _ => string.Empty
+            };
+        }
+
+        private string GetGameModeDescription()
+        {
+            return selectedGameMode switch
+            {
+                GameMode.Single => L("mode_single_desc"),
+                GameMode.Multiplayer => L("mode_multiplayer_desc"),
                 _ => string.Empty
             };
         }
@@ -2012,8 +2109,11 @@ namespace Malatro
                 + horse.RelicSpeedBonus
                 + horse.TemporarySpeed
                 + horse.TimedSpeedBonus;
-            var liveSpeed = Mathf.Max(1.5f, horse.CurrentSpeed);
-            var estimatedSpeed = Mathf.Max(1.5f, Mathf.Lerp(baseSpeed, liveSpeed, 0.68f));
+            var minimumForwardSpeed = GetMinimumForwardSpeed(horse);
+            var liveSpeed = Mathf.Max(minimumForwardSpeed, horse.CurrentSpeed);
+            var estimatedSpeed = Mathf.Max(
+                minimumForwardSpeed,
+                Mathf.Lerp(baseSpeed, liveSpeed, 0.68f));
             var remainingDistance = Mathf.Max(0f, trackLength - horse.Distance);
             var statusDelay = Mathf.Max(horse.StunTimer, horse.TimeStopTimer);
             return raceClock + statusDelay + remainingDistance / estimatedSpeed;
