@@ -257,7 +257,7 @@ namespace Malatro
             {
                 new Vector3(0.6f, 1.6f, 0f),
                 new Vector3(-2.9f, 0.4f, 0f),
-                new Vector3(4.5f, -0.75f, 0f)
+                new Vector3(4.3f, -0.75f, 0f)
             };
 
             for (var i = 0; i < standings.Count; i++)
