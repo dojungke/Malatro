@@ -8,6 +8,9 @@ namespace Malatro
         private const int TrackSegments = 48;
         private const float CameraFocusX = 0.5f;
         private const float RaceHorseScale = 1.4f;
+        private const float PodiumWinnerScale = 2.5f;
+        private const float PodiumHorseScale = 2.5f;
+        private const float PodiumWidthRatio = 1.2f;
 
         private readonly List<LineRenderer> laneLines = new();
         private Transform horseLayer;
@@ -244,17 +247,17 @@ namespace Malatro
             if (podium.sprite != null)
             {
                 var size = podium.sprite.bounds.size;
-                var targetWidth = halfWidth * 1.5f;
+                var targetWidth = halfWidth * PodiumWidthRatio;
                 var scale = targetWidth / Mathf.Max(0.01f, size.x);
                 podium.transform.localScale = Vector3.one * scale;
-                podium.transform.localPosition = new Vector3(0f, -1.15f, 0f);
+                podium.transform.localPosition = new Vector3(0.6f, -1.15f, 0f);
             }
 
             var podiumPositions = new[]
             {
-                new Vector3(0f, 2.35f, 0f),
-                new Vector3(-4.05f, 1.15f, 0f),
-                new Vector3(4.05f, 0.45f, 0f)
+                new Vector3(0.6f, 1.6f, 0f),
+                new Vector3(-2.9f, 0.4f, 0f),
+                new Vector3(4.5f, -0.75f, 0f)
             };
 
             for (var i = 0; i < standings.Count; i++)
@@ -275,7 +278,8 @@ namespace Malatro
                 horse.Visual.transform.SetParent(horseLayer, false);
                 horse.Visual.transform.localPosition = podiumPositions[i];
                 horse.Visual.transform.localRotation = Quaternion.identity;
-                horse.Visual.transform.localScale = Vector3.one * (i == 0 ? 1.55f : 1.4f);
+                horse.Visual.transform.localScale = Vector3.one
+                    * (i == 0 ? PodiumWinnerScale : PodiumHorseScale);
                 if (horse.Renderer != null)
                 {
                     horse.Renderer.enabled = true;

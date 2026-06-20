@@ -923,8 +923,7 @@ namespace Malatro
                 if (horse.Distance >= GetTrackLength())
                 {
                     horse.Distance = GetTrackLength();
-                    horse.Finished = true;
-                    horse.FinishTime = raceClock;
+                    horse.Finish(raceClock);
                 }
             }
 
@@ -1327,8 +1326,7 @@ namespace Malatro
                 rider.RideTargetSpeedMultiplier = 1f;
                 if (rider.Distance >= trackLength && !rider.Finished)
                 {
-                    rider.Finished = true;
-                    rider.FinishTime = raceClock;
+                    rider.Finish(raceClock);
                 }
             }
         }

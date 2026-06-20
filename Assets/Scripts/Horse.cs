@@ -149,6 +149,22 @@ namespace Malatro
             }
         }
 
+        public void Finish(float finishTime)
+        {
+            Finished = true;
+            FinishTime = finishTime;
+            CurrentSpeed = 0f;
+            SkillEffectTimer = 0f;
+            SkillMessage = string.Empty;
+            StunTimer = 0f;
+            TimeStopTimer = 0f;
+            SpeedMultiplier = 1f;
+            SpeedMultiplierTimer = 0f;
+            TimedSpeedBonus = 0f;
+            TimedAccelerationBonus = 0f;
+            TimedBoostTimer = 0f;
+        }
+
         public void SetRunFrames(SpriteRenderer renderer, Sprite firstFrame, Sprite secondFrame)
         {
             Renderer = renderer;

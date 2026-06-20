@@ -77,6 +77,17 @@ namespace Malatro
                 return;
             }
 
+            if (horse.Finished)
+            {
+                HideAllEffects(horse);
+                return;
+            }
+
+            if (manaBarRoot != null)
+            {
+                manaBarRoot.gameObject.SetActive(true);
+            }
+
             if (horse.SkillEffectTimer > previousSkillTimer + 0.05f)
             {
                 skillBurstClock = 0f;
@@ -102,6 +113,21 @@ namespace Malatro
             UpdateSkill(horse, skillActive, stunned || timeStopped);
             UpdateStatusText(horse, stunned, timeStopped, slowed, skillActive);
             UpdateManaBar(horse);
+        }
+
+        private void HideAllEffects(Horse horse)
+        {
+            previousSkillTimer = 0f;
+            skillBurstClock = 0f;
+            horseRenderer.color = baseHorseColor;
+            UpdateStun(false);
+            UpdateTimeStop(false);
+            UpdateSkill(horse, false, false);
+            UpdateStatusText(horse, false, false, false, false);
+            if (manaBarRoot != null)
+            {
+                manaBarRoot.gameObject.SetActive(false);
+            }
         }
 
         private void UpdateManaBar(Horse horse)
